@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <title>ตรวจสอบรายการ</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="key.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap');
+        
+        html, body { 
+            height: 100%; margin: 0; padding: 0; 
+            font-family: 'Sarabun', sans-serif; background: #f4f6f9; 
+            -webkit-user-select: none; user-select: none;
+            touch-action: none;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+        }
+
+        .app-layout { 
+            display: flex; align-items: center; justify-content: center; 
+            height: 100dvh; width: 100vw; padding: 12px; box-sizing: border-box; 
+        }
+
+        .cart-container { 
+            width: 100%; max-width: 420px; max-height: 96vh; height: 100%; background: #fff; 
+            border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); 
+            padding: 16px; box-sizing: border-box; display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+
+        #cartItemList {
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* ปุ่มเลือกใน Popup สไตล์การ์ดเหลืองอ่อนนุ่มตามดีไซน์รูป 2 */
+        .location-card {
+            background-color: #fffdf5;
+            border: 1.5px solid #fef3c7;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 8px;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            box-shadow: 0 2px 6px rgba(217, 119, 6, 0.05);
+        }
+        .location-card:active {
+            transform: scale(0.96);
+            background-color: #fef3c7;
+        }
+
+        /* ปุ่มเลือกห้อง สไตล์ดีไซน์รูป 3 */
+        .room-card {
+            background-color: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 10px 4px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+        }
+        .room-card:active {
+            transform: scale(0.96);
+            background-color: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-layout">
+        <div class="cart-container">
+            <!-- หัวข้อหลัก -->
+            <div class="pb-2 mb-3 border-b border-slate-100 shrink-0">
+                <h1 class="text-base font-extrabold text-slate-800 text-center tracking-wide">ตรวจสอบรายการ</h1>
+            </div>
+
+            <!-- กลุ่มประเภทลูกค้า + เบอร์โทร & สถานที่ -->
+            <div class="bg-amber-50/70 p-2.5 rounded-2xl border border-amber-200/80 mb-3 space-y-2.5 shrink-0">
+                <div class="flex items-center justify-between gap-1.5">
+                    <button type="button" onclick="selectCustomerType('ชาวบ้าน')" id="btn-type-1" class="cust-type-btn flex-1 h-10 flex items-center justify-center gap-1 px-1 bg-white border border-amber-300 rounded-xl text-[11px] font-bold text-slate-700 shadow-sm transition-all active:scale-95 whitespace-nowrap">
+                        <span>🏡</span> <span>ชาวบ้าน</span>
+                    </button>
+
+                    <!-- รูปที่ 1: ปุ่มนักท่องเที่ยว กดแล้วเปิด Popup รูปที่ 2 ทันที -->
+                    <button type="button" onclick="handleTouristClick()" id="btn-type-2" class="cust-type-btn flex-1 h-10 flex items-center justify-center gap-1 px-1 bg-amber-500 text-white border border-amber-500 rounded-xl text-[11px] font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap">
+                        <span>🧳</span> <span id="touristBtnLabel">นักท่องเที่ยว</span>
+                    </button>
+
+                    <button type="button" onclick="selectCustomerType('สบายดี')" id="btn-type-3" class="cust-type-btn flex-1 h-10 flex items-center justify-center gap-1 px-1 bg-white border border-amber-300 rounded-xl text-[11px] font-bold text-slate-700 shadow-sm transition-all active:scale-95 whitespace-nowrap">
+                        <span>😊</span> <span>สบายดี</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs">📞</span>
+                        <input type="tel" id="customerPhoneInput" maxlength="10" placeholder="เบอร์โทร (ถ้ามี)" oninput="this.value = this.value.replace(/[^0-9]/g, '');" class="w-full pl-7 pr-2 h-9 text-xs font-semibold bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-800 placeholder-slate-400">
+                    </div>
+                    
+                    <button type="button" id="btnChangeLocation" onclick="openLocationModal()" class="hidden shrink-0 h-9 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold px-3 rounded-xl items-center justify-center gap-1 shadow-sm active:scale-95 transition whitespace-nowrap">
+                        <span>📍</span> <span id="locationBtnText">เลือกสถานที่</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- กล่องรายการอาหาร -->
+            <div class="bg-slate-50/50 rounded-xl border border-slate-200/80 p-2.5 mb-3 flex flex-col flex-1 min-h-0 overflow-hidden">
+                <div class="flex justify-between items-center text-xs font-bold text-slate-600 pb-2 border-b border-slate-200 mb-2 px-1 shrink-0">
+                    <span class="w-1/2">รายการอาหาร</span>
+                    <span class="w-1/6 text-center">จำนวน</span>
+                    <span class="w-1/3 text-right">รวม (บาท)</span>
+                </div>
+
+                <div id="cartItemList" class="space-y-2 overflow-y-auto pr-1 flex-1"></div>
+
+                <div class="mt-2 pt-2 border-t border-slate-200 bg-emerald-50/60 rounded-lg p-2 flex justify-between items-center text-xs font-bold text-emerald-800 shrink-0">
+                    <span id="cartSummaryCount">0 รายการ | 0 ชิ้น</span>
+                    <span id="cartTotalPrice" class="text-sm">ราคารวมทั้งหมด: 0 บาท</span>
+                </div>
+            </div>
+
+            <!-- หมายเหตุออเดอร์ -->
+            <div class="mb-3 shrink-0">
+                <label class="block text-xs font-bold text-slate-700 mb-1">หมายเหตุออเดอร์ (ถ้ามี):</label>
+                <input type="text" id="orderNoteInput" placeholder="เช่น ใส่กล่องแยกน้ำ, ทานที่นี่..." class="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 text-slate-800">
+            </div>
+
+            <!-- แถบปุ่มล่างสุด -->
+            <div class="flex items-center gap-2 w-full shrink-0">
+                <button type="button" onclick="goBackToMenu()" class="flex-1 h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2 rounded-xl text-xs active:scale-95 transition flex items-center justify-center gap-1 shadow-sm whitespace-nowrap">
+                    <span>⬅️</span> <span>กลับไปแก้ไข</span>
+                </button>
+                <button type="button" onclick="goToPrintOrder()" class="flex-[2] h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 rounded-xl text-xs shadow-md active:scale-95 transition flex items-center justify-center gap-1 whitespace-nowrap">
+                    <span>✅</span> <span>ไปหน้าสั่งพิมพ์ใบเสร็จ</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- POPUP เลือกสถานที่ / เลือกโซน-ห้อง (รูปที่ 2 และ 3) -->
+    <div id="locationModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-[32px] w-full max-w-[340px] p-5 max-h-[85vh] flex flex-col shadow-2xl border border-slate-100">
+            <!-- Header Popup -->
+            <div class="flex justify-between items-center pb-2 mb-3">
+                <div class="flex items-center gap-2">
+                    <span id="modalIconHeader" class="text-lg">📍</span>
+                    <h3 id="locationModalTitle" class="font-extrabold text-slate-800 text-base">เลือกสถานที่</h3>
+                </div>
+                <button type="button" onclick="closeLocationModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center font-bold text-sm transition">✕</button>
+            </div>
+            
+            <!-- Body Popup (สำหรับเปลี่ยนเนื้อหาระหว่าง รูป 2 กับ รูป 3) -->
+            <div id="locationModalContent" class="overflow-y-auto flex-1 pr-0.5"></div>
+
+            <!-- Footer ปุ่มย้อนกลับ -->
+            <div id="modalFooter" class="pt-3 border-t border-slate-100 mt-2 hidden">
+                <button type="button" onclick="renderMainLocations()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold active:scale-95 transition flex items-center gap-1">
+                    <span>⬅️</span> <span>ย้อนกลับ</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+        document.addEventListener('touchmove', function(e) {
+            if (e.scale !== 1) { e.preventDefault(); }
+        }, { passive: false });
+
+        let cartItems = [];
+        let dbLocations = [];
+        let dbZones = [];
+
+        // รายการสถานที่หลักสำรอง (สำหรับรูปที่ 2) กรณี Database ยังไม่ส่งข้อมูลมา
+        const fallbackLocations = [
+            { name: 'บาหลี', icon: '🏨' },
+            { name: 'บ้านเขาบ้านเรา', icon: '🏡' },
+            { name: 'เฮ้ย ! ชิลล์มั้ย', icon: '🏝️' },
+            { name: 'หน้าร้าน', icon: '📍' }
+        ];
+
+        // รายการห้อง/โซนสำรอง (สำหรับรูปที่ 3)
+        const fallbackRooms = [
+            'หลังที่ 1', 'หลังที่ 2',
+            'หลังที่ 3', 'หลังที่ 4',
+            'หลังที่ 5', 'หลังที่ 6',
+            'หลังที่ 7', 'หลังที่ 8',
+            'หลังที่ 9', 'ริมคลองหลังแรก',
+            'ริมคลองหลังกลาง', 'ริมคลองหลังใน',
+            'หลังร้านค้า', 'หลังเขียวติดถนน',
+            'หลังเขียวในสุด', 'หลังขาวตรงกลาง'
+        ];
+
+        window.onload = async function() {
+            loadCartData();
+            initCustomerType();
+            updateLocationButtonText();
+            await fetchLocationsAndZones();
+        };
+
+        function loadCartData() {
+            const rawCart = localStorage.getItem('cart');
+            cartItems = rawCart ? JSON.parse(rawCart) : [];
+            document.getElementById('customerPhoneInput').value = localStorage.getItem('customerPhone') || '';
+            document.getElementById('orderNoteInput').value = localStorage.getItem('orderNote') || '';
+            renderCartList();
+        }
+
+        function getItemUnitPrice(item, currentGroup) {
+            if (item.isDeliveryFee) return 20;
+            let p = 0;
+            if (currentGroup === 'ชาวบ้าน') {
+                p = item.price_group_1 ?? item.price_local ?? item.price ?? 0;
+            } else if (currentGroup === 'นักท่องเที่ยว') {
+                p = item.price_group_2 ?? item.price_tourist ?? item.price ?? 0;
+            } else if (currentGroup === 'สบายดี') {
+                p = item.price_group_3 ?? item.price_sabaidee ?? item.price ?? 0;
+            } else {
+                p = item.price || 0;
+            }
+            return Number(p);
+        }
+
+        function cleanNoteText(noteStr) {
+            if (!noteStr) return '';
+            const parts = noteStr.split(',').map(s => s.trim()).filter(Boolean);
+            return [...new Set(parts)].join(', ');
+        }
+
+        function renderCartList() {
+            const currentGroup = localStorage.getItem('selectedGroupName') || 'นักท่องเที่ยว';
+            const currentLocation = localStorage.getItem('selectedLocation') || '';
+            const pureFoodItems = cartItems.filter(item => !item.isDeliveryFee);
+
+            let foodSubtotal = 0;
+            pureFoodItems.forEach(item => {
+                const q = Number(item.qty || 1);
+                const p = getItemUnitPrice(item, currentGroup);
+                foodSubtotal += (q * p);
+            });
+
+            const isAtStore = (currentLocation === 'หน้าร้าน' || currentLocation.includes('หน้าร้าน'));
+
+            let needDeliveryFee = false;
+            if (currentGroup === 'นักท่องเที่ยว' && !isAtStore && foodSubtotal > 0 && foodSubtotal < 300) {
+                needDeliveryFee = true;
+            }
+
+            if (needDeliveryFee) {
+                const deliveryItem = {
+                    name: 'ค่าบริการจัดส่ง',
+                    note: 'ยอดน้อยกว่า 300 บาท',
+                    qty: 1,
+                    price: 20,
+                    isDeliveryFee: true
+                };
+                cartItems = [...pureFoodItems, deliveryItem];
+            } else {
+                cartItems = [...pureFoodItems];
+            }
+
+            const container = document.getElementById('cartItemList');
+            container.innerHTML = '';
+
+            if (cartItems.length === 0) {
+                container.innerHTML = `<div class="text-center text-slate-400 py-6 text-xs font-semibold">ไม่มีรายการอาหารในตะกร้า</div>`;
+                updateSummary(0, 0, 0);
+                return;
+            }
+
+            let grandTotalPrice = 0;
+            let foodItemCount = 0;
+            let foodTotalQty = 0;
+
+            cartItems.forEach((item, index) => {
+                const itemQty = Number(item.qty || 1);
+                const itemUnitPrice = getItemUnitPrice(item, currentGroup);
+                const itemSum = itemQty * itemUnitPrice;
+
+                grandTotalPrice += itemSum;
+
+                if (!item.isDeliveryFee) {
+                    foodItemCount++;
+                    foodTotalQty += itemQty;
+                }
+
+                const cleanedNote = cleanNoteText(item.note);
+
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center py-1.5 border-b border-slate-100 text-xs';
+                
+                div.innerHTML = `
+                    <div class="w-1/2 pr-1">
+                        <div class="font-bold ${item.isDeliveryFee ? 'text-amber-600' : 'text-slate-800'}">${item.name || 'รายการอาหาร'}</div>
+                        ${cleanedNote ? `<div class="text-[10px] ${item.isDeliveryFee ? 'text-amber-500' : 'text-rose-500'} font-semibold">${cleanedNote}</div>` : ''}
+                    </div>
+                    <div class="w-1/6 text-center font-bold text-slate-700">${itemQty}</div>
+                    <div class="w-1/3 text-right flex items-center justify-end gap-1">
+                        <span class="font-bold text-blue-600">${itemSum.toLocaleString()}.-</span>
+                        ${!item.isDeliveryFee ? `<button onclick="removeItem(${index})" class="text-rose-500 hover:text-rose-700 font-black px-1">✕</button>` : '<span class="w-4"></span>'}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+
+            updateSummary(foodItemCount, foodTotalQty, grandTotalPrice);
+        }
+
+        function updateSummary(typeCount, totalQty, totalPrice) {
+            document.getElementById('cartSummaryCount').textContent = `${typeCount} รายการ | ${totalQty} ชิ้น`;
+            document.getElementById('cartTotalPrice').textContent = `ราคารวมทั้งหมด: ${totalPrice.toLocaleString()} บาท`;
+        }
+
+        function removeItem(index) {
+            cartItems.splice(index, 1);
+            localStorage.setItem('cart', JSON.stringify(cartItems));
+            renderCartList();
+        }
+
+        function initCustomerType() {
+            const currentType = localStorage.getItem('selectedGroupName') || 'นักท่องเที่ยว';
+            selectCustomerType(currentType);
+        }
+
+        function selectCustomerType(type) {
+            localStorage.setItem('selectedGroupName', type);
+            
+            document.querySelectorAll('.cust-type-btn').forEach(btn => {
+                btn.classList.remove('bg-amber-500', 'text-white', 'border-amber-500');
+                btn.classList.add('bg-white', 'text-slate-700', 'border-amber-300');
+            });
+
+            if (type === 'นักท่องเที่ยว') {
+                setBtnActive('btn-type-2');
+            } else if (type === 'ชาวบ้าน') {
+                setBtnActive('btn-type-1');
+            } else if (type === 'สบายดี') {
+                setBtnActive('btn-type-3');
+            }
+
+            renderCartList();
+        }
+
+        function setBtnActive(id) {
+            const btn = document.getElementById(id);
+            if(btn) {
+                btn.classList.remove('bg-white', 'text-slate-700', 'border-amber-300');
+                btn.classList.add('bg-amber-500', 'text-white', 'border-amber-500');
+            }
+        }
+
+        // กดปุ่มนักท่องเที่ยว (รูปที่ 1) -> เด้งเปิด Popup (รูปที่ 2)
+        function handleTouristClick() {
+            selectCustomerType('นักท่องเที่ยว');
+            openLocationModal();
+        }
+
+        async function fetchLocationsAndZones() {
+            try {
+                if (typeof supabaseClient !== 'undefined') {
+                    const [locRes, zoneRes] = await Promise.all([
+                        supabaseClient.from('locations').select('*'),
+                        supabaseClient.from('zones').select('*')
+                    ]);
+                    if (locRes.data && locRes.data.length > 0) dbLocations = locRes.data;
+                    if (zoneRes.data && zoneRes.data.length > 0) dbZones = zoneRes.data;
+                }
+            } catch (err) {
+                console.log('Supabase read fallback active');
+            }
+        }
+
+        function openLocationModal() {
+            document.getElementById('locationModal').classList.remove('hidden');
+            renderMainLocations();
+        }
+
+        function closeLocationModal() {
+            document.getElementById('locationModal').classList.add('hidden');
+        }
+
+        // Render หน้าต่าง รูปที่ 2 (เลือกสถานที่หลัก 4 การ์ด)
+        function renderMainLocations() {
+            document.getElementById('locationModalTitle').textContent = 'เลือกสถานที่';
+            document.getElementById('modalFooter').classList.add('hidden');
+
+            const container = document.getElementById('locationModalContent');
+            container.className = 'grid grid-cols-2 gap-3 py-1';
+            container.innerHTML = '';
+
+            const list = dbLocations.length > 0 ? dbLocations : fallbackLocations;
+
+            list.forEach(loc => {
+                const locName = loc.name || loc.location_name || '';
+                const icon = loc.icon || (locName.includes('หน้าร้าน') ? '📍' : locName.includes('ชิลล์') ? '🏝️' : locName.includes('บ้าน') ? '🏡' : '🏨');
+
+                const card = document.createElement('div');
+                card.className = 'location-card';
+                card.innerHTML = `
+                    <span class="text-3xl mb-1">${icon}</span>
+                    <span class="font-bold text-slate-800 text-xs text-center truncate w-full">${locName}</span>
+                `;
+
+                // พอกดปุ่มสถานที่ในรูปที่ 2
+                card.onclick = function() {
+                    if (locName === 'หน้าร้าน') {
+                        // ถ้ากดหน้าร้าน ให้เลือกเลย ไม่ต้องเลือกห้องต่อ
+                        finishSelection('หน้าร้าน');
+                    } else {
+                        // กดรีสอร์ทอื่น -> เด้งไปเลือกโซน/ห้อง (รูปที่ 3)
+                        renderSubRooms(locName);
+                    }
+                };
+
+                container.appendChild(card);
+            });
+        }
+
+        // Render หน้าต่าง รูปที่ 3 (เลือกโซน/ห้อง)
+        function renderSubRooms(locationName) {
+            document.getElementById('locationModalTitle').textContent = locationName;
+            document.getElementById('modalFooter').classList.remove('hidden');
+
+            const container = document.getElementById('locationModalContent');
+            container.className = 'grid grid-cols-2 gap-2 py-1';
+            container.innerHTML = '';
+
+            // ดึงห้องจาก DB หรือใช้ fallbackRooms
+            let matched = dbZones.filter(z => z.location_name === locationName || z.location_id === locationName);
+            let roomList = matched.length > 0 ? matched.map(m => m.name || m.zone_name || m.room_name) : fallbackRooms;
+
+            roomList.forEach(roomName => {
+                const btn = document.createElement('div');
+                btn.className = 'room-card';
+                btn.textContent = roomName;
+                
+                // พอกดเลือกห้องในรูปที่ 3
+                btn.onclick = function() {
+                    finishSelection(`${locationName} - ${roomName}`);
+                };
+
+                container.appendChild(btn);
+            });
+        }
+
+        // ยืนยันการเลือกสถานที่ บันทึกลงระบบ แล้วปิด Popup พร้อมอัปเดตหน้าตาตะกร้า
+        function finishSelection(finalLocationName) {
+            localStorage.setItem('selectedLocation', finalLocationName);
+            updateLocationButtonText();
+            closeLocationModal();
+            renderCartList();
+        }
+
+        function updateLocationButtonText() {
+            const loc = localStorage.getItem('selectedLocation');
+            const btnLabel = document.getElementById('touristBtnLabel');
+            if (loc && btnLabel) {
+                btnLabel.textContent = loc;
+            }
+        }
+
+        function saveInputs() {
+            const phone = document.getElementById('customerPhoneInput').value.trim();
+            const note = document.getElementById('orderNoteInput').value.trim();
+            localStorage.setItem('customerPhone', phone);
+            localStorage.setItem('orderNote', note);
+        }
+
+        function goBackToMenu() {
+            saveInputs();
+            window.location.href = 'OrderEntry.html';
+        }
+
+        function goToPrintOrder() {
+            if (cartItems.length === 0) {
+                alert('กรุณาเลือกรายการอาหารก่อนทำรายการค่ะ');
+                return;
+            }
+
+            saveInputs();
+            const currentGroup = localStorage.getItem('selectedGroupName') || 'นักท่องเที่ยว';
+            
+            const updatedCart = cartItems.map(item => ({
+                ...item,
+                price: getItemUnitPrice(item, currentGroup),
+                note: cleanNoteText(item.note)
+            }));
+
+            localStorage.setItem('cart', JSON.stringify(updatedCart));
+            window.location.href = 'PrintOrder.html';
+        }
+    </script>
+</body>
+</html>

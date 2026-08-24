@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
     <title>ตรวจสอบรายการ</title>
     
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="key.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap');
         
@@ -14,48 +15,61 @@
             height: 100%; margin: 0; padding: 0; 
             font-family: 'Sarabun', sans-serif; background: #f4f6f9; 
             -webkit-user-select: none; user-select: none;
-            touch-action: none;
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
         }
 
         .app-layout { 
             display: flex; align-items: center; justify-content: center; 
-            height: 100dvh; width: 100vw; padding: 12px; box-sizing: border-box; 
+            min-height: 100vh; min-height: 100dvh; width: 100vw; padding: 12px; box-sizing: border-box; 
         }
 
         .cart-container { 
             width: 100%; max-width: 420px; max-height: 96vh; height: 100%; background: #fff; 
             border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); 
-            padding: 16px; box-sizing: border-box; display: flex; flex-direction: column;
-            overflow: hidden;
+            padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden;
         }
 
-        #cartItemList {
-            touch-action: pan-y;
-            -webkit-overflow-scrolling: touch;
+        /* ปรับแต่งให้รองรับการ Scroll บนมือถืออย่างสมบูรณ์ */
+        #cartItemList { 
+            touch-action: pan-y !important; 
+            -webkit-overflow-scrolling: touch !important; 
+            overflow-y: auto !important;
+            max-height: 100%;
         }
+
+        .location-card {
+            background-color: #fffdf5; border: 1.5px solid #fef3c7; border-radius: 20px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 14px 8px; cursor: pointer; transition: all 0.15s ease-in-out;
+            box-shadow: 0 2px 6px rgba(217, 119, 6, 0.05);
+        }
+        .location-card:active { transform: scale(0.96); background-color: #fef3c7; }
+
+        .room-card {
+            background-color: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px;
+            padding: 10px 4px; text-align: center; font-size: 11px; font-weight: 700;
+            color: #334155; cursor: pointer; transition: all 0.15s ease-in-out;
+        }
+        .room-card:active { transform: scale(0.96); background-color: #e2e8f0; border-color: #cbd5e1; }
     </style>
 </head>
 <body>
 
     <div class="app-layout">
         <div class="cart-container">
-            <!-- Fixed หัวข้อหลัก: ชิดบนสุด + อยู่ตรงกลาง + ไม่ขยับ -->
             <div class="pb-2 mb-3 border-b border-slate-100 shrink-0">
                 <h1 class="text-base font-extrabold text-slate-800 text-center tracking-wide">ตรวจสอบรายการ</h1>
             </div>
 
-            <!-- Fixed กลุ่มประเภทลูกค้า + เบอร์โทร & สถานที่ -->
             <div class="bg-amber-50/70 p-2.5 rounded-2xl border border-amber-200/80 mb-3 space-y-2.5 shrink-0">
                 <div class="flex items-center justify-between gap-1.5">
                     <button type="button" onclick="selectCustomerType('ชาวบ้าน')" id="btn-type-1" class="cust-type-btn flex-1 h-10 flex items-center justify-center gap-1 px-1 bg-white border border-amber-300 rounded-xl text-[11px] font-bold text-slate-700 shadow-sm transition-all active:scale-95 whitespace-nowrap">
                         <span>🏡</span> <span>ชาวบ้าน</span>
                     </button>
-                    <button type="button" onclick="selectCustomerType('นักท่องเที่ยว')" id="btn-type-2" class="cust-type-btn flex-1 h-10 flex items-center justify-center gap-1 px-1 bg-white border border-amber-300 rounded-xl text-[11px] font-bold text-slate-700 shadow-sm transition-all active:scale-95 whitespace-nowrap">
-                        <span>🧳</span> <span>นักท่องเที่ยว</span>
+
+                    <button type="button" onclick="handleTouristClick()" id="btn-type-2" class="cust-type-btn flex-1 h-10 flex items-center justify-center gap-1 px-1 bg-amber-500 text-white border border-amber-500 rounded-xl text-[11px] font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap">
+                        <span>🧳</span> <span id="touristBtnLabel">นักท่องเที่ยว</span>
                     </button>
+
                     <button type="button" onclick="selectCustomerType('สบายดี')" id="btn-type-3" class="cust-type-btn flex-1 h-10 flex items-center justify-center gap-1 px-1 bg-white border border-amber-300 rounded-xl text-[11px] font-bold text-slate-700 shadow-sm transition-all active:scale-95 whitespace-nowrap">
                         <span>😊</span> <span>สบายดี</span>
                     </button>
@@ -66,36 +80,31 @@
                         <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs">📞</span>
                         <input type="tel" id="customerPhoneInput" maxlength="10" placeholder="เบอร์โทร (ถ้ามี)" oninput="this.value = this.value.replace(/[^0-9]/g, '');" class="w-full pl-7 pr-2 h-9 text-xs font-semibold bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-800 placeholder-slate-400">
                     </div>
-                    
-                    <button type="button" id="btnChangeLocation" onclick="openLocationModal()" class="hidden shrink-0 h-9 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold px-3 rounded-xl flex items-center justify-center gap-1 shadow-sm active:scale-95 transition whitespace-nowrap">
-                        <span>📍</span> <span id="locationBtnText">เลือกสถานที่</span>
-                    </button>
                 </div>
             </div>
 
             <!-- กล่องรายการอาหาร -->
-            <div class="bg-slate-50/50 rounded-xl border border-slate-200/80 p-2.5 mb-3 flex flex-col flex-1 min-h-0 overflow-hidden">
-                <div class="flex justify-between items-center text-xs font-bold text-slate-600 pb-2 border-b border-slate-200 mb-2 px-1 shrink-0">
+            <div class="bg-white rounded-2xl border border-slate-200 p-3 mb-3 flex flex-col flex-1 min-h-0 overflow-hidden shadow-sm">
+                <div class="flex justify-between items-center text-xs font-bold text-slate-500 pb-2 border-b border-slate-100 mb-2 px-1 shrink-0">
                     <span class="w-1/2">รายการอาหาร</span>
                     <span class="w-1/6 text-center">จำนวน</span>
                     <span class="w-1/3 text-right">รวม (บาท)</span>
                 </div>
 
+                <!-- พื้นที่รายการอาหารแบบ Scrollable -->
                 <div id="cartItemList" class="space-y-2 overflow-y-auto pr-1 flex-1"></div>
 
-                <div class="mt-2 pt-2 border-t border-slate-200 bg-emerald-50/60 rounded-lg p-2 flex justify-between items-center text-xs font-bold text-emerald-800 shrink-0">
+                <div class="mt-2 pt-2 border-t border-slate-100 bg-emerald-50 rounded-xl p-2 flex justify-between items-center text-xs font-bold text-emerald-800 shrink-0">
                     <span id="cartSummaryCount">0 รายการ | 0 ชิ้น</span>
                     <span id="cartTotalPrice" class="text-sm">ราคารวมทั้งหมด: 0 บาท</span>
                 </div>
             </div>
 
-            <!-- Fixed หมายเหตุออเดอร์ -->
             <div class="mb-3 shrink-0">
                 <label class="block text-xs font-bold text-slate-700 mb-1">หมายเหตุออเดอร์ (ถ้ามี):</label>
                 <input type="text" id="orderNoteInput" placeholder="เช่น ใส่กล่องแยกน้ำ, ทานที่นี่..." class="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 text-slate-800">
             </div>
 
-            <!-- Fixed แถบปุ่มล่างสุด -->
             <div class="flex items-center gap-2 w-full shrink-0">
                 <button type="button" onclick="goBackToMenu()" class="flex-1 h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2 rounded-xl text-xs active:scale-95 transition flex items-center justify-center gap-1 shadow-sm whitespace-nowrap">
                     <span>⬅️</span> <span>กลับไปแก้ไข</span>
@@ -107,26 +116,37 @@
         </div>
     </div>
 
+    <script src="ConfirmOrder_Location.js"></script>
+
     <script>
         document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
-        document.addEventListener('touchmove', function(e) {
-            if (e.scale !== 1) { e.preventDefault(); }
-        }, { passive: false });
-
-        const SUPABASE_URL = 'https://wmhweeeyulhmoilypklz.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_yXKK7aSunM_KCqRiUhGupQ__Qs1nyCd';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let cartItems = [];
-        let locationsData = [];
-        let zonesData = [];
 
         window.onload = async function() {
             loadCartData();
             initCustomerType();
             updateLocationButtonText();
-            await fetchLocationsAndZones();
+            if (typeof fetchLocationsAndZones === 'function') await fetchLocationsAndZones();
         };
+
+        function loadCartData() {
+            const rawCart = localStorage.getItem('cart');
+            cartItems = rawCart ? JSON.parse(rawCart) : [];
+            document.getElementById('customerPhoneInput').value = localStorage.getItem('customerPhone') || '';
+            document.getElementById('orderNoteInput').value = localStorage.getItem('orderNote') || '';
+            renderCartList();
+        }
+
+        function getItemUnitPrice(item, currentGroup) {
+            if (item.isDeliveryFee) return 20;
+            let p = 0;
+            if (currentGroup === 'ชาวบ้าน') p = item.price_group_1 ?? item.price_local ?? item.price ?? 0;
+            else if (currentGroup === 'นักท่องเที่ยว') p = item.price_group_2 ?? item.price_tourist ?? item.price ?? 0;
+            else if (currentGroup === 'สบายดี') p = item.price_group_3 ?? item.price_sabaidee ?? item.price ?? 0;
+            else p = item.price || 0;
+            return Number(p);
+        }
 
         function cleanNoteText(noteStr) {
             if (!noteStr) return '';
@@ -134,42 +154,21 @@
             return [...new Set(parts)].join(', ');
         }
 
-        function loadCartData() {
-            const rawCart = localStorage.getItem('cart');
-            cartItems = rawCart ? JSON.parse(rawCart) : [];
-            
-            document.getElementById('customerPhoneInput').value = localStorage.getItem('customerPhone') || '';
-            document.getElementById('orderNoteInput').value = localStorage.getItem('orderNote') || '';
-
-            renderCartList();
-        }
-
-        function getItemUnitPrice(item, currentGroup) {
-            if (item.isDeliveryFee) return 20;
-            let p = 0;
-            if (currentGroup === 'ชาวบ้าน') {
-                p = item.price_group_1 ?? item.price_local ?? item.price ?? 0;
-            } else if (currentGroup === 'นักท่องเที่ยว') {
-                p = item.price_group_2 ?? item.price_tourist ?? item.price ?? 0;
-            } else if (currentGroup === 'สบายดี') {
-                p = item.price_group_3 ?? item.price_sabaidee ?? item.price ?? 0;
-            } else {
-                p = item.price || 0;
-            }
-            return Number(p);
-        }
-
         function renderCartList() {
             const currentGroup = localStorage.getItem('selectedGroupName') || 'นักท่องเที่ยว';
-            
-            // อ่านค่าสถานที่ (เช็คทั้งselectedLocation และ ข้อความบนปุ่มกันพลาด)
             const currentLocation = localStorage.getItem('selectedLocation') || '';
-            const btnText = document.getElementById('locationBtnText')?.textContent || '';
-
-            // 1. คัดเอาเฉพาะรายการอาหารจริงๆ (ตัดรายการค่าส่งเดิมออกชั่วคราวเพื่อคิดยอด)
+            
+            // 1. แยกรายการอาหาร (ไม่รวมค่าจัดส่ง)
             const pureFoodItems = cartItems.filter(item => !item.isDeliveryFee);
 
-            // 2. คำนวณราคารวมของอาหารทั้งหมด
+            // 2. จัดเรียงตามตัวอักษร ก-ฮ (จากน้อยไปหามาก)
+            pureFoodItems.sort((a, b) => {
+                const nameA = a.name || '';
+                const nameB = b.name || '';
+                return nameA.localeCompare(nameB, 'th');
+            });
+
+            // 3. คำนวณราคารวมอาหาร
             let foodSubtotal = 0;
             pureFoodItems.forEach(item => {
                 const q = Number(item.qty || 1);
@@ -177,43 +176,31 @@
                 foodSubtotal += (q * p);
             });
 
-            // 3. ตรวจสอบว่าเป็น "หน้าร้าน" หรือไม่
-            const isAtStore = (currentLocation === 'หน้าร้าน' || btnText.includes('หน้าร้าน'));
-
-            // 4. เงื่อนไขการคิดค่าส่ง 20 บาท:
-            // ต้องเป็น "นักท่องเที่ยว" AND "ไม่ใช่หน้าร้าน" AND "มีอาหารในตะกร้า" AND "ยอดรวมอาหารน้อยกว่า 300 บาท"
+            // 4. เงื่อนไขค่าจัดส่ง
+            const isAtStore = (currentLocation === 'หน้าร้าน' || currentLocation.includes('หน้าร้าน'));
             let needDeliveryFee = false;
+
             if (currentGroup === 'นักท่องเที่ยว' && !isAtStore && foodSubtotal > 0 && foodSubtotal < 300) {
                 needDeliveryFee = true;
             }
 
-            // 5. ประกอบ array ตะกร้าสินค้าใหม่
             if (needDeliveryFee) {
-                const deliveryItem = {
-                    name: 'ค่าบริการจัดส่ง',
-                    note: 'ยอดน้อยกว่า 300 บาท',
-                    qty: 1,
-                    price: 20,
-                    isDeliveryFee: true
-                };
+                const deliveryItem = { name: 'ค่าบริการจัดส่ง', note: 'ยอดน้อยกว่า 300 บาท', qty: 1, price: 20, isDeliveryFee: true };
                 cartItems = [...pureFoodItems, deliveryItem];
             } else {
                 cartItems = [...pureFoodItems];
             }
 
-            // 6. แสดงผลลงในหน้า HTML
             const container = document.getElementById('cartItemList');
             container.innerHTML = '';
 
             if (cartItems.length === 0) {
-                container.innerHTML = `<div class="text-center text-slate-400 py-6 text-xs">ไม่มีรายการอาหารในตะกร้า</div>`;
+                container.innerHTML = `<div class="text-center text-slate-400 py-6 text-xs font-semibold">ไม่มีรายการอาหารในตะกร้า</div>`;
                 updateSummary(0, 0, 0);
                 return;
             }
 
-            let grandTotalPrice = 0;
-            let foodItemCount = 0;
-            let foodTotalQty = 0;
+            let grandTotalPrice = 0, foodItemCount = 0, foodTotalQty = 0;
 
             cartItems.forEach((item, index) => {
                 const itemQty = Number(item.qty || 1);
@@ -221,16 +208,11 @@
                 const itemSum = itemQty * itemUnitPrice;
 
                 grandTotalPrice += itemSum;
-
-                if (!item.isDeliveryFee) {
-                    foodItemCount++;
-                    foodTotalQty += itemQty;
-                }
+                if (!item.isDeliveryFee) { foodItemCount++; foodTotalQty += itemQty; }
 
                 const cleanedNote = cleanNoteText(item.note);
-
                 const div = document.createElement('div');
-                div.className = 'flex justify-between items-center py-1.5 border-b border-slate-100 text-xs';
+                div.className = 'flex justify-between items-center py-2 border-b border-slate-100 text-xs';
                 
                 div.innerHTML = `
                     <div class="w-1/2 pr-1">
@@ -267,24 +249,14 @@
 
         function selectCustomerType(type) {
             localStorage.setItem('selectedGroupName', type);
-            
             document.querySelectorAll('.cust-type-btn').forEach(btn => {
                 btn.classList.remove('bg-amber-500', 'text-white', 'border-amber-500');
                 btn.classList.add('bg-white', 'text-slate-700', 'border-amber-300');
             });
 
-            const locationBtn = document.getElementById('btnChangeLocation');
-
-            if (type === 'นักท่องเที่ยว') {
-                setBtnActive('btn-type-2');
-                locationBtn.classList.remove('hidden');
-            } else if (type === 'ชาวบ้าน') {
-                setBtnActive('btn-type-1');
-                locationBtn.classList.add('hidden');
-            } else if (type === 'สบายดี') {
-                setBtnActive('btn-type-3');
-                locationBtn.classList.add('hidden');
-            }
+            if (type === 'นักท่องเที่ยว') setBtnActive('btn-type-2');
+            else if (type === 'ชาวบ้าน') setBtnActive('btn-type-1');
+            else if (type === 'สบายดี') setBtnActive('btn-type-3');
 
             renderCartList();
         }
@@ -297,32 +269,20 @@
             }
         }
 
-        async function fetchLocationsAndZones() {
-            try {
-                const [locRes, zoneRes] = await Promise.all([
-                    supabaseClient.from('locations').select('*'),
-                    supabaseClient.from('zones').select('*')
-                ]);
-                if (locRes.data) locationsData = locRes.data;
-                if (zoneRes.data) zonesData = zoneRes.data;
-            } catch (err) {
-                console.error('Error fetching data:', err);
-            }
+        function handleTouristClick() {
+            selectCustomerType('นักท่องเที่ยว');
+            openLocationModal();
         }
 
         function updateLocationButtonText() {
             const loc = localStorage.getItem('selectedLocation');
-            const btnText = document.getElementById('locationBtnText');
-            if (loc && btnText) {
-                btnText.textContent = loc;
-            }
+            const btnLabel = document.getElementById('touristBtnLabel');
+            if (loc && btnLabel) btnLabel.textContent = loc;
         }
 
         function saveInputs() {
-            const phone = document.getElementById('customerPhoneInput').value.trim();
-            const note = document.getElementById('orderNoteInput').value.trim();
-            localStorage.setItem('customerPhone', phone);
-            localStorage.setItem('orderNote', note);
+            localStorage.setItem('customerPhone', document.getElementById('customerPhoneInput').value.trim());
+            localStorage.setItem('orderNote', document.getElementById('orderNoteInput').value.trim());
         }
 
         function goBackToMenu() {
@@ -335,28 +295,16 @@
                 alert('กรุณาเลือกรายการอาหารก่อนทำรายการค่ะ');
                 return;
             }
-
             saveInputs();
-
             const currentGroup = localStorage.getItem('selectedGroupName') || 'นักท่องเที่ยว';
-            
             const updatedCart = cartItems.map(item => ({
                 ...item,
                 price: getItemUnitPrice(item, currentGroup),
                 note: cleanNoteText(item.note)
             }));
-
             localStorage.setItem('cart', JSON.stringify(updatedCart));
             window.location.href = 'PrintOrder.html';
         }
-    </script>
-
-    <script>
-        (function() {
-            const s = document.createElement('script');
-            s.src = 'ConfirmOrder_popup_location.js?v=' + Date.now();
-            document.body.appendChild(s);
-        })();
     </script>
 </body>
 </html>

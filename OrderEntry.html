@@ -7,6 +7,7 @@
     
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="key.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
@@ -15,12 +16,8 @@
         }
 
         html, body { 
-            position: fixed;
             width: 100%;
             height: 100%;
-            overflow: hidden;
-            touch-action: manipulation;
-            -webkit-text-size-adjust: 100%;
             background-color: var(--bg-color); 
             color: #1e293b;
             font-family: 'Sarabun', 'Segoe UI', Tahoma, sans-serif;
@@ -40,16 +37,17 @@
             padding: 0.75rem 0.75rem 0.5rem 0.75rem; 
         }
 
+        /* ปรับปรุงโครงสร้าง scrollable-content ให้อิงตาม Fixed Layout */
         .scrollable-content {
-            position: absolute;
+            position: fixed;
             top: 4.25rem;
             bottom: 4.5rem;
             left: 0;
             right: 0;
-            overflow-y: auto;
+            overflow-y: scroll !important;
             padding: 0.5rem 0.75rem 1rem 0.75rem;
-            touch-action: pan-y;
-            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y !important;
+            -webkit-overflow-scrolling: touch !important;
         }
 
         .category-card { background: #ffffff; border-radius: 1.25rem; padding: 1rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); }
@@ -90,17 +88,12 @@
 </div>
 
 <script>
-    const SUPABASE_URL = 'https://wmhweeeyulhmoilypklz.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_yXKK7aSunM_KCqRiUhGupQ__Qs1nyCd';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     let categories = []; 
     let foods = []; 
     let foodPricesMap = {};
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
-    // ป้องกัน Gesture Pinch Zoom บน iOS/Safari
-    document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+    // ปล่อยให้การ Touch Scroll ทำงานได้ตามปกติ ลบจุดดักป้องกันการสัมผัสออก
 
     async function loadData() {
         try {
