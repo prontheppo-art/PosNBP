@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <title>รายการอาหาร (PrintOrder.html)</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        html, body { 
+            height: 100%; margin: 0; padding: 0; 
+            font-family: 'Sarabun', sans-serif; background: #f4f6f9; 
+            -webkit-user-select: none; user-select: none;
+        }
+
+        .app-layout { 
+            display: flex; align-items: flex-start; justify-content: center; 
+            min-height: 100dvh; width: 100vw; padding: 12px; box-sizing: border-box; 
+        }
+
+        /* การจัด Layout ล็อกบน-ล่าง */
+        .bill-container { 
+            width: 100%; max-width: 420px; background: #fff; 
+            border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); 
+            padding: 16px; box-sizing: border-box; display: flex; flex-direction: column;
+            max-height: calc(100dvh - 24px); /* ควบคุมไม่ให้เกินหน้าจอมือถือ */
+        }
+
+        /* กรอบรายการอาหาร ให้เลื่อน Scroll ได้ */
+        .food-list-border {
+            border: 2px solid #000000;
+            border-radius: 12px;
+            padding: 12px;
+            margin: 8px 0;
+            background-color: #ffffff;
+            flex: 1 1 auto;
+            overflow-y: auto; /* เปิด Scroll ตรงกลาง */
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #reviewQrcode img {
+            margin: 0 auto;
+            display: block;
+            width: 75px;
+            height: 75px;
+        }
+
+        /* สำหรับการสั่งพิมพ์ผ่านเครื่องพิมพ์ (Print CSS) */
+        @media print {
+            body, .app-layout {
+                background: #fff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                height: auto !important;
+            }
+            .bill-container {
+                box-shadow: none !important;
+                max-height: none !important;
+                border-radius: 0 !important;
+                padding: 10px !important;
+                width: 100% !important;
+            }
+            .food-list-border {
+                overflow: visible !important; /* เลื่อนพิมพ์ออกมาให้ครบทุกรายการ */
+                max-height: none !important;
+                border: 2px solid #000000 !important;
+            }
+            .no-print {
+                display: none !important; /* ซ่อนปุ่มพิมพ์เมื่อสั่งพิมพ์จริง */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-layout">
+        <div class="bill-container" id="captureArea">
+            
+            <!-- 📌 ส่วนที่ 1: Header ด้านบน (Fix ติดบน) -->
+            <div class="text-center shrink-0 pb-1">
+                <h2 class="font-bold text-lg text-slate-900 leading-tight">ลาบหนองบัวลำภู @เขื่อนขุนด่าน</h2>
+                <div class="text-xs font-semibold text-slate-700 mt-0.5">064-565-4951</div>
+                
+                <div class="flex flex-wrap justify-center items-center gap-1 font-bold text-xs text-slate-900 mt-1.5">
+                    <span>รายการอาหาร</span>
+                    <span id="orderDateTime" class="font-normal text-slate-700">( - )</span>
+                </div>
+            </div>
+
+            <!-- 🔄 ส่วนรายการอาหาร (Scrollable ตรงกลาง) -->
+            <div class="food-list-border">
+                <div id="billItemList" class="space-y-2.5 text-xs">
+                    <div class="text-center text-slate-400 py-4">กำลังดึงข้อมูลรายการอาหาร...</div>
+                </div>
+            </div>
+
+            <!-- 📌 ส่วนที่ 2: Footer ด้านล่าง (Fix ติดล่าง) -->
+            <div class="shrink-0 pt-1">
+                <div id="orderCustomerInfo" class="text-xs text-slate-700 space-y-0.5 mb-2 px-1"></div>
+
+                <div class="pt-2 border-t border-slate-300">
+                    <div class="flex justify-between items-center text-xs font-bold text-slate-900">
+                        <div id="billSummaryCount" class="border border-black px-2 py-1 rounded">
+                            0 รายการ | 0 ชิ้น
+                        </div>
+                        <div id="billTotalPrice" class="text-base font-black text-slate-900">
+                            รวม 0 บาท
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3 pt-2 border-t border-dashed border-slate-300 text-center">
+                    <div class="text-[11px] font-bold text-slate-800">⭐ ขอขอบพระคุณที่อุดหนุนค่ะ ⭐</div>
+                    <div class="text-[10px] text-slate-600 mb-1">แนะนำ ติชม ได้นะคะ 🙏</div>
+                    
+                    <div class="flex justify-center my-1">
+                        <div id="reviewQrcode" class="p-1.5 border border-slate-900 rounded-lg bg-white inline-block"></div>
+                    </div>
+                </div>
+
+                <!-- ปุ่มพิมพ์ / บันทึกข้อมูลจริง -->
+                <button id="saveBtn" onclick="printAndFinish()" class="no-print mt-3 bg-slate-900 hover:bg-black text-white font-bold py-3 px-4 rounded-xl text-sm w-full shadow-md active:scale-95 transition cursor-pointer">
+                    พิมพ์
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://wmhweeeyulhmoilypklz.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_yXKK7aSunM_KCqRiUhGupQ__Qs1nyCd';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const GOOGLE_MAPS_REVIEW_URL = 'https://maps.app.goo.gl/tRU6iu9r3Fy2NuAY6';
+
+        let currentPendingPayload = null;
+
+        document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+        
+        window.onload = function() {
+            loadPendingOrderData();
+            generateReviewQRCode();
+        };
+
+        function cleanNoteText(noteStr) {
+            if (!noteStr) return '';
+            const parts = noteStr.split(',').map(s => s.trim()).filter(Boolean);
+            return [...new Set(parts)].join(', ');
+        }
+
+        function generateReviewQRCode() {
+            const qrContainer = document.getElementById('reviewQrcode');
+            qrContainer.innerHTML = '';
+            
+            new QRCode(qrContainer, {
+                text: GOOGLE_MAPS_REVIEW_URL,
+                width: 75,
+                height: 75,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        function loadPendingOrderData() {
+            const rawPending = localStorage.getItem('pendingOrderData');
+            const rawCart = localStorage.getItem('cart');
+
+            if (rawPending) {
+                try {
+                    currentPendingPayload = JSON.parse(rawPending);
+                } catch (err) {
+                    console.error('Error parsing pending order data:', err);
+                }
+            }
+
+            if (!currentPendingPayload || !currentPendingPayload.items || currentPendingPayload.items.length === 0) {
+                let items = [];
+                if (rawCart) {
+                    try { items = JSON.parse(rawCart); } catch(e){}
+                }
+
+                let totalQty = 0;
+                let totalPrice = 0;
+                items.forEach(item => {
+                    const q = Number(item.qty || 1);
+                    const p = Number(item.price || 0);
+                    totalQty += q;
+                    totalPrice += (q * p);
+                });
+
+                currentPendingPayload = {
+                    customer_group: localStorage.getItem('selectedGroupName') || 'นักท่องเที่ยว',
+                    customer_phone: localStorage.getItem('customerPhone') || '',
+                    location_name: localStorage.getItem('selectedLocationName') || '',
+                    zone_name: localStorage.getItem('selectedZoneName') || '',
+                    note: localStorage.getItem('orderNote') || '',
+                    items: items,
+                    total_qty: totalQty,
+                    total_price: totalPrice,
+                    created_at: new Date().toISOString()
+                };
+            }
+
+            renderBill(currentPendingPayload);
+        }
+
+        function renderBill(order) {
+            const items = order.items || [];
+            const container = document.getElementById('billItemList');
+            container.innerHTML = '';
+
+            if (items.length === 0) {
+                container.innerHTML = `<div class="text-center text-slate-400 py-4">ไม่มีรายการอาหาร</div>`;
+                return;
+            }
+
+            // 🌟 จัดเรียงรายการอาหารตามตัวอักษร ก-ฮ (ให้ "ค่าบริการจัดส่ง" อยู่ด้านล่างสุดเสมอ)
+            const sortedItems = [...items].sort((a, b) => {
+                if (a.isDeliveryFee) return 1;
+                if (b.isDeliveryFee) return -1;
+                return (a.name || '').localeCompare(b.name || '', 'th');
+            });
+
+            sortedItems.forEach(item => {
+                const itemName = item.name || '';
+                const itemQty = Number(item.qty || 1);
+                const itemTotalPrice = Number(item.price || 0) * itemQty;
+                const cleanedNote = cleanNoteText(item.note);
+
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-start pb-2 border-b border-slate-200 last:border-0 last:pb-0';
+                
+                div.innerHTML = `
+                    <div class="pr-2 flex-1">
+                        <div class="font-bold text-slate-900 text-xs">
+                            ${itemName} <span class="font-black text-black">x${itemQty}</span>
+                        </div>
+                        ${cleanedNote ? `<div class="text-[11px] text-slate-600 font-semibold mt-0.5 ml-1">▪ ${cleanedNote}</div>` : ''}
+                    </div>
+                    <span class="font-bold text-slate-900 text-xs whitespace-nowrap">${itemTotalPrice.toLocaleString()} ฿</span>
+                `;
+                container.appendChild(div);
+            });
+
+            const d = new Date();
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear() + 543;
+            const time = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            const formattedDate = `${day}/${month}/${year} ${time}`;
+
+            const locStr = [order.location_name, order.zone_name].filter(Boolean).join(' - ');
+            const locDisplay = locStr ? ` (${locStr})` : '';
+
+            document.getElementById('orderDateTime').textContent = `(${formattedDate})${locDisplay}`;
+
+            const infoContainer = document.getElementById('orderCustomerInfo');
+            let infoHtml = '';
+            
+            if (order.customer_phone) {
+                infoHtml += `<div><b>โทร:</b> ${order.customer_phone}</div>`;
+            }
+            if (order.note) {
+                infoHtml += `<div class="font-bold text-slate-800"><b>หมายเหตุ:</b> ${order.note}</div>`;
+            }
+            infoContainer.innerHTML = infoHtml;
+
+            document.getElementById('billSummaryCount').textContent = `${items.length} รายการ | ${order.total_qty || 0} ชิ้น`;
+            document.getElementById('billTotalPrice').textContent = `รวม ${(order.total_price || 0).toLocaleString()} บาท`;
+        }
+
+        /* 🌟 ฟังก์ชันการบันทึกข้อมูลเข้า Supabase และสั่งพิมพ์ */
+        async function printAndFinish() {
+            if (!currentPendingPayload || !currentPendingPayload.items || currentPendingPayload.items.length === 0) {
+                alert('ไม่พบข้อมูลออเดอร์สำหรับบันทึก');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerText = '⏳ กำลังบันทึกข้อมูล...';
+
+            try {
+                // 1. บันทึกข้อมูลจริงลง Supabase เมื่อยืนยันการกดปุ่มสั่งพิมพ์
+                const { error } = await supabaseClient
+                    .from('orders')
+                    .insert([currentPendingPayload]);
+
+                if (error) throw error;
+
+                // 2. เรียกคำสั่งพิมพ์ของเบราว์เซอร์/เครื่องพิมพ์
+                window.print();
+
+                // 3. เคลียร์ LocalStorage ล้างออเดอร์เก่า
+                localStorage.removeItem('pendingOrderData');
+                localStorage.removeItem('cart');
+                localStorage.removeItem('customerPhone');
+                localStorage.removeItem('orderNote');
+                localStorage.removeItem('selectedLocation');
+                localStorage.removeItem('selectedLocationName');
+                localStorage.removeItem('selectedZoneName');
+
+                // 4. พานำกลับไปหน้าหลัก
+                window.location.href = 'index.html';
+
+            } catch (err) {
+                console.error("เกิดข้อผิดพลาดในการบันทึก: ", err);
+                alert("เกิดข้อผิดพลาดในการบันทึกออเดอร์: " + err.message);
+                saveBtn.disabled = false;
+                saveBtn.innerText = 'พิมพ์';
+            }
+        }
+    </script>
+</body>
+</html>

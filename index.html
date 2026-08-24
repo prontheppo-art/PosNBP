@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <title>ลาบหนองบัวลำภู @เขื่อนขุนด่านปราการชล</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            font-family: sans-serif; 
+            background: #f4f6f9; 
+            touch-action: pan-y; 
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .app-layout { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100dvh; 
+            max-width: 500px; 
+            width: 100vw;
+            margin: 0 auto; 
+            background: #fff; 
+            box-sizing: border-box; 
+            padding: 16px 16px; 
+            justify-content: flex-start; 
+            align-items: center; 
+            overflow: hidden;
+        }
+
+        .menu-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            overflow-y: auto;
+            flex: 1;
+            padding: 2px 0;
+            box-sizing: border-box;
+        }
+
+        .menu-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            height: 65px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            transition: transform 0.1s ease;
+            box-sizing: border-box;
+            width: 100%;
+            border: none;
+            cursor: pointer;
+            flex-shrink: 0;
+            text-decoration: none;
+        }
+
+        .menu-btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn-blue { background-color: #2563eb; }
+        .btn-amber { background-color: #d97706; }
+        .btn-teal { background-color: #0d9488; }
+        .btn-purple { background-color: #9333ea; }
+        .btn-slate { background-color: #334155; }
+
+        @keyframes scaleUp {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .modal-box {
+            animation: scaleUp 0.15s ease-out;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-layout shadow-xl">
+    <!-- ส่วนหัว -->
+    <div class="w-full text-center pt-1 pb-3 flex flex-col items-center shrink-0 border-b border-gray-100 mb-3">
+        <h1 class="font-extrabold text-xl text-slate-900 leading-snug">ลาบหนองบัวลำภู</h1>
+        <h2 class="font-bold text-base text-slate-700 mt-1">@เขื่อนขุนด่านปราการชล</h2>
+        <p class="text-[10px] text-gray-500 font-medium mt-1">ระบบจัดการร้านอาหารและสั่งอาหาร</p>
+    </div>
+
+    <!-- ปุ่มเมนูต่าง ๆ -->
+    <div class="menu-list">
+        <!-- 1. หน้าสั่งอาหาร -->
+        <button type="button" onclick="goToPage('OrderEntry.html')" class="menu-btn btn-blue">
+            <span>📝</span> หน้าสั่งอาหาร
+        </button>
+
+        <!-- 2. สรุปออเดอร์รายวัน -->
+        <button type="button" onclick="goToPage('DailyReport.html')" class="menu-btn btn-amber">
+            <span>📋</span> สรุปออเดอร์รายวัน
+        </button>
+
+        <!-- 3. สรุปตามกลุ่มลูกค้า -->
+        <button type="button" onclick="goToPage('GroupSalesReport.html')" class="menu-btn btn-teal">
+            <span>👥</span> สรุปตามกลุ่มลูกค้า
+        </button>
+
+        <!-- 4. สต็อกสินค้าคงเหลือ (แก้ไขคำที่พิมพ์ผิดแล้ว) -->
+        <button type="button" onclick="goToPage('StockManager.html')" class="menu-btn btn-purple">
+            <span>📦</span> สต็อกสินค้าคงเหลือ
+        </button>
+
+        <!-- 5. ผู้ดูแลระบบ -->
+        <button type="button" onclick="openAdminModal()" class="menu-btn btn-slate">
+            <span>🔒</span> ผู้ดูแลระบบ
+        </button>
+    </div>
+</div>
+
+<!-- Modal สำหรับกรอกรหัสผ่านเข้าแอดมิน -->
+<div id="adminAuthModal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-4 z-[9999]">
+    <div class="bg-white w-full max-w-xs rounded-2xl p-6 text-center shadow-2xl modal-box">
+        <div class="text-3xl mb-2">🔒</div>
+        <div class="text-base font-bold text-slate-800 mb-1">เข้าสู่ระบบผู้ดูแลระบบ</div>
+        <div class="text-xs text-slate-500 mb-4">กรุณากรอกรหัสผ่านเพื่อเข้าใช้งาน</div>
+        
+        <div class="relative w-full mb-3">
+            <input type="password" id="indexAdminPasswordInput" placeholder="รหัสผ่าน" class="w-full py-3 px-10 border border-slate-300 rounded-xl text-sm text-center outline-none focus:border-blue-500 font-bold" />
+            <button type="button" onclick="toggleIndexPassword('indexAdminPasswordInput', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-base text-slate-400 focus:outline-none">👁️</button>
+        </div>
+
+        <div class="flex gap-2">
+            <button type="button" onclick="closeAdminModal()" class="flex-1 py-2.5 bg-slate-400 hover:bg-slate-500 text-white font-bold rounded-xl text-xs transition">ยกเลิก</button>
+            <button type="button" onclick="verifyAdminPassword()" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-blue-500/30">ยืนยัน</button>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Dialog เตือนเมื่อรหัสผ่านผิด -->
+<div id="indexCustomDialog" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4 z-[10000]">
+    <div class="bg-white w-full max-w-[280px] rounded-2xl p-5 text-center shadow-2xl modal-box">
+        <div class="text-3xl mb-2">⚠️</div>
+        <div class="text-sm font-bold text-slate-800 mb-1.5">รหัสผ่านไม่ถูกต้อง</div>
+        <div id="indexDialogMessage" class="text-xs text-slate-500 mb-4 leading-relaxed">คุณกรอกรหัสผ่านไม่ถูกต้อง</div>
+        <button type="button" onclick="closeIndexCustomDialog()" class="w-full py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-xs transition">ตกลง</button>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener('gestureend', function (e) { e.preventDefault(); }, { passive: false });
+
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (event) {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, { passive: false });
+
+    document.addEventListener('touchstart', function (event) {
+        if (event.touches.length > 1) {
+            event.preventDefault();
+        }
+    }, { passive: false });
+
+    function goToPage(url) {
+        window.location.href = url;
+    }
+
+    let indexFailedAttempts = 0;
+    const indexMaxAttempts = 3;
+
+    function openAdminModal() {
+        if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
+            window.location.href = 'PageAdmin.html';
+            return;
+        }
+        
+        indexFailedAttempts = 0;
+        document.getElementById('indexAdminPasswordInput').value = '';
+        const modal = document.getElementById('adminAuthModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => document.getElementById('indexAdminPasswordInput').focus(), 100);
+    }
+
+    function closeAdminModal() {
+        const modal = document.getElementById('adminAuthModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function toggleIndexPassword(fieldId, btn) {
+        const input = document.getElementById(fieldId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = '🙈';
+        } else {
+            input.type = 'password';
+            btn.textContent = '👁️';
+        }
+    }
+
+    function verifyAdminPassword() {
+        const inputPass = document.getElementById('indexAdminPasswordInput').value;
+        const savedPassword = localStorage.getItem('adminPassword') ?? '';
+
+        if (inputPass === savedPassword) {
+            sessionStorage.setItem('isAdminLoggedIn', 'true');
+            window.location.href = 'PageAdmin.html';
+        } else {
+            indexFailedAttempts++;
+            document.getElementById('indexAdminPasswordInput').value = '';
+
+            if (indexFailedAttempts >= indexMaxAttempts) {
+                closeAdminModal();
+                document.getElementById('indexDialogMessage').textContent = 'คุณกรอกรหัสผ่านผิดเกิน 3 ครั้ง';
+                const dialog = document.getElementById('indexCustomDialog');
+                dialog.classList.remove('hidden');
+                dialog.classList.add('flex');
+            } else {
+                const remaining = indexMaxAttempts - indexFailedAttempts;
+                document.getElementById('indexDialogMessage').textContent = `รหัสผ่านไม่ถูกต้อง กรอกผิดครั้งที่ ${indexFailedAttempts} (เหลืออีก ${remaining} ครั้ง)`;
+                const dialog = document.getElementById('indexCustomDialog');
+                dialog.classList.remove('hidden');
+                dialog.classList.add('flex');
+            }
+        }
+    }
+
+    function closeIndexCustomDialog() {
+        const dialog = document.getElementById('indexCustomDialog');
+        dialog.classList.add('hidden');
+        dialog.classList.remove('flex');
+        
+        if (indexFailedAttempts < indexMaxAttempts) {
+            document.getElementById('indexAdminPasswordInput').focus();
+        }
+    }
+
+    document.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const customDialog = document.getElementById('indexCustomDialog');
+            if (customDialog && !customDialog.classList.contains('hidden')) {
+                closeIndexCustomDialog();
+                return;
+            }
+            const authModal = document.getElementById('adminAuthModal');
+            if (authModal && !authModal.classList.contains('hidden')) {
+                verifyAdminPassword();
+            }
+        }
+    });
+</script>
+</body>
+</html>
