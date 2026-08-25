@@ -122,18 +122,8 @@
 
         let db;
         let menus = [];
-        let groups = [];
-        let prices = [];
         let foodGroups = []; 
         let currentSelectedCategory = 'all';
-
-        function cleanGroupName(name) {
-            if (!name) return '';
-            return name
-                .replace(/ชาวบ้าน\s*\/\s*/g, '')
-                .replace(/สมาชิก\s*VIP\s*\/\s*/g, '')
-                .trim();
-        }
 
         window.addEventListener('DOMContentLoaded', async () => {
             // เชื่อมต่อ Supabase อย่างปลอดภัย
@@ -160,22 +150,19 @@
 
         async function loadAllData() {
             try {
-                const [ { data: mData }, { data: gData }, { data: pData }, { data: fgData } ] = await Promise.all([
+                // ดึงเฉพาะตาราง foods และ food_groups
+                const [ { data: mData }, { data: fgData } ] = await Promise.all([
                     db.from('foods').select('*'),
-                    db.from('customer_groups').select('*').order('id', { ascending: true }),
-                    db.from('food_prices').select('*'),
                     db.from('food_groups').select('*').order('name', { ascending: true })
                 ]);
 
                 menus = mData || [];
-                groups = gData || [];
-                prices = pData || [];
                 foodGroups = fgData || [];
 
-                // หากไม่มีตาราง food_groups ให้ดึงจากหมวดหมู่ใน foods โดยอัตโนมัติ
+                // หากไม่มีตาราง food_groups หรือหาไม่เจอ ให้ดึงจาก category_id ใน foods อัตโนมัติ
                 if (foodGroups.length === 0 && menus.length > 0) {
                     const uniqueCats = [...new Set(menus.map(m => m.category || m.category_id).filter(Boolean))];
-                    foodGroups = uniqueCats.map((cat, idx) => ({ id: cat, name: cat }));
+                    foodGroups = uniqueCats.map((cat) => ({ id: cat, name: `กลุ่ม ${cat}` }));
                 }
 
                 renderCategoryDropdownPopup();
@@ -233,17 +220,10 @@
                 targetCategories = foodGroups.filter(cat => String(cat.id) === String(currentSelectedCategory));
             }
 
-            if (targetCategories.length === 0) {
-                container.innerHTML = `<div class="text-center text-gray-400 text-xs py-8">ไม่พบข้อมูลกลุ่มรายการอาหาร</div>`;
-                return;
-            }
-
-            const groupWidthPercent = groups.length > 0 ? Math.floor(55 / groups.length) : 20;
-            let groupHeaders = groups.map(g => `<th class="p-2.5 text-center bg-blue-500 text-white font-bold" style="width: ${groupWidthPercent}%;">${cleanGroupName(g.name)}</th>`).join('');
-
             let allTablesHtml = '';
 
             targetCategories.forEach(currentCat => {
+                // กรองเมนูโดยเช็คจาก category_id ตรงกับ Supabase
                 const catMenus = menus
                     .filter(m => String(m.category_id) === String(currentCat.id) || String(m.category) === String(currentCat.name))
                     .sort((a, b) => {
@@ -256,27 +236,29 @@
 
                 let rowsHtml = '';
                 catMenus.forEach((m, index) => {
-                    let groupCells = '';
-                    groups.forEach(g => {
-                        const priceEntry = prices.find(p => String(p.food_id) === String(m.id) && String(p.customer_group_id) === String(g.id));
-                        const price = priceEntry ? priceEntry.price : (m.price || 0);
-                        
-                        groupCells += `
-                            <td class="p-2 text-center" style="width: ${groupWidthPercent}%;">
-                                <input type="number" value="${price}" 
-                                       onfocus="this.select()"
-                                       onblur="updatePrice('${m.id}', '${g.id}', this.value)"
-                                       class="w-full max-w-[64px] border border-gray-300 rounded-lg py-1.5 px-1 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
-                            </td>
-                        `;
-                    });
-
                     const borderClass = index === catMenus.length - 1 ? 'bg-white' : 'border-b border-gray-200 bg-white';
 
                     rowsHtml += `
                         <tr class="${borderClass}">
-                            <td class="p-2.5 font-bold text-gray-800 text-left pl-3 truncate" style="width: 45%;">${m.name}</td>
-                            ${groupCells}
+                            <td class="p-2.5 font-bold text-gray-800 text-left pl-3 truncate" style="width: 37%;">${m.name}</td>
+                            <td class="p-1.5 text-center" style="width: 21%;">
+                                <input type="number" value="${m.price_1 || 0}" 
+                                       onfocus="this.select()"
+                                       onblur="updatePriceDirect('${m.id}', 'price_1', this.value)"
+                                       class="w-full max-w-[58px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
+                            </td>
+                            <td class="p-1.5 text-center" style="width: 21%;">
+                                <input type="number" value="${m.price_2 || 0}" 
+                                       onfocus="this.select()"
+                                       onblur="updatePriceDirect('${m.id}', 'price_2', this.value)"
+                                       class="w-full max-w-[58px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
+                            </td>
+                            <td class="p-1.5 text-center" style="width: 21%;">
+                                <input type="number" value="${m.price_3 || 0}" 
+                                       onfocus="this.select()"
+                                       onblur="updatePriceDirect('${m.id}', 'price_3', this.value)"
+                                       class="w-full max-w-[58px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
+                            </td>
                         </tr>
                     `;
                 });
@@ -294,8 +276,10 @@
                                 <thead>
                                     <!-- หัวตารางสีฟ้า ล็อกติดอยู่ด้านบนเวลากวาดนิ้วเลื่อน -->
                                     <tr class="bg-blue-500 text-white font-bold sticky-th">
-                                        <th class="p-2.5 text-left pl-3 bg-blue-500" style="width: 45%;">รายการอาหาร</th>
-                                        ${groupHeaders}
+                                        <th class="p-2.5 text-left pl-3 bg-blue-500" style="width: 37%;">รายการอาหาร</th>
+                                        <th class="p-2.5 text-center bg-blue-500" style="width: 21%;">ชาวบ้าน</th>
+                                        <th class="p-2.5 text-center bg-blue-500" style="width: 21%;">นักท่องเที่ยว</th>
+                                        <th class="p-2.5 text-center bg-blue-500" style="width: 21%;">สบายดี</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -315,34 +299,33 @@
             container.innerHTML = allTablesHtml;
         }
 
-        async function updatePrice(foodId, groupId, newPrice) {
+        // ฟังก์ชันอัปเดตราคา บันทึกตรงเข้าตาราง foods คอลัมน์ price_1, price_2, price_3
+        async function updatePriceDirect(foodId, priceColumn, newPrice) {
             const parsedPrice = newPrice === '' ? 0 : parseFloat(newPrice);
-            const existing = prices.find(p => String(p.food_id) === String(foodId) && String(p.customer_group_id) === String(groupId));
+            
+            // อัปเดตข้อมูลชั่วคราวใน Memory
+            const item = menus.find(m => String(m.id) === String(foodId));
+            if (item) {
+                item[priceColumn] = parsedPrice;
+            }
 
             try {
-                if (existing) {
-                    const { error } = await db.from('food_prices')
-                        .update({ price: parsedPrice })
-                        .eq('id', existing.id);
+                const updateData = {};
+                updateData[priceColumn] = parsedPrice;
 
-                    if (!error) {
-                        existing.price = parsedPrice;
-                    } else {
-                        console.error('อัปเดตราคาไม่สำเร็จ:', error.message);
-                    }
+                // แปลง foodId เป็น Integer (parseInt) ก่อนส่งไปอัปเดตที่ Supabase
+                const { error } = await db.from('foods')
+                    .update(updateData)
+                    .eq('id', parseInt(foodId));
+
+                if (error) {
+                    console.error(`❌ บันทึก ${priceColumn} ไม่สำเร็จ:`, error.message);
+                    alert(`เกิดข้อผิดพลาดในการบันทึก: ${error.message}`);
                 } else {
-                    const { data, error } = await db.from('food_prices')
-                        .insert({ food_id: parseInt(foodId), customer_group_id: parseInt(groupId), price: parsedPrice })
-                        .select();
-
-                    if (!error && data && data.length > 0) {
-                        prices.push(data[0]);
-                    } else {
-                        console.error('บันทึกราคาใหม่ไม่สำเร็จ:', error ? error.message : '');
-                    }
+                    console.log(`✅ บันทึก ${priceColumn} ของ ID ${foodId} เป็น ${parsedPrice} บาท สำเร็จ!`);
                 }
             } catch (err) {
-                console.error("Exception on updatePrice:", err);
+                console.error("Exception on updatePriceDirect:", err);
             }
         }
     </script>

@@ -52,7 +52,7 @@
         <a href="index.html" class="text-xs bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg font-semibold hover:bg-slate-300">⬅️ กลับ</a>
     </div>
 
-    <!-- Filter Section (ปรับ UI กล่องเลือกวันที่ตามรูปที่ 1) -->
+    <!-- Filter Section -->
     <div class="p-3 bg-slate-50 border-b space-y-2 shrink-0">
         <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-100 flex items-center justify-between">
             <span class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
@@ -76,7 +76,7 @@
     let db;
     let allOrdersCache = [];
     
-    // ฟังก์ชั่นดึงวันที่ปัจจุบันในรูปแบบ YYYY-MM-DD (อิงตามเวลาท้องถิ่น)
+    // ฟังก์ชั่นดึงวันที่ปัจจุบันในรูปแบบ YYYY-MM-DD
     function getTodayString() {
         const now = new Date();
         const year = now.getFullYear();
@@ -113,10 +113,8 @@
     }
 
     window.onload = function() {
-        // แสดงวันที่ปัจจุบันทันทีเมื่อเปิดหน้า
         updateDateDisplay(currentSelectedDate);
 
-        // เชื่อมต่อ Supabase
         if (typeof window.supabaseClient !== 'undefined') {
             db = window.supabaseClient;
         } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
@@ -125,7 +123,6 @@
             console.error("Critical Error: ไม่สามารถเชื่อมต่อ Supabase ได้");
         }
 
-        // เริ่มต้นระบบปฏิทิน
         if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.init === 'function') {
             CalendarSystem.init((selectedDate) => {
                 if (selectedDate) {
@@ -158,21 +155,17 @@
         
         container.innerHTML = '';
 
-        // ปรับปรุงการเช็กวันที่: ดึงเอาเฉพาะ YYYY-MM-DD จาก created_at หรือ order_date
+        // กรองรายการโดยตัด String ตรงๆ ป้องกัน Timezone เพี้ยน
         let filtered = allOrdersCache.filter(o => {
             let oDate = '';
-            if (o.created_at) {
-                // แปลง Timestamp ของ Supabase เป็น YYYY-MM-DD ตามเขตเวลาเครื่อง
-                const d = new Date(o.created_at);
-                const year = d.getFullYear();
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                oDate = `${year}-${month}-${day}`;
-            } else if (o.order_date) {
-                oDate = o.order_date.split('T')[0];
+            
+            const rawDate = o.order_date || o.created_at || o.date;
+            if (rawDate) {
+                oDate = rawDate.split('T')[0].split(' ')[0];
             }
             
-            return oDate === currentSelectedDate && o.status !== 'pending';
+            const status = (o.status || '').toLowerCase();
+            return oDate === currentSelectedDate && status !== 'cancelled' && status !== 'pending';
         });
         
         if (filtered.length === 0) {
@@ -189,15 +182,29 @@
                 try { items = JSON.parse(order.items); } catch(e) { items = []; }
             } else if (Array.isArray(order.items)) {
                 items = order.items;
+            } else if (typeof order.order_items === 'string') {
+                try { items = JSON.parse(order.order_items); } catch(e) { items = []; }
+            } else if (Array.isArray(order.order_items)) {
+                items = order.order_items;
             }
 
-            let billTotal = Number(order.total_price || order.total || 0);
+            let billTotal = Number(order.total_price || order.total_amount || order.total || 0);
+            
+            if (billTotal === 0 && items.length > 0) {
+                billTotal = items.reduce((sum, item) => {
+                    let q = Number(item.qty || item.quantity || 1);
+                    let p = Number(item.price || item.unit_price || 0);
+                    return sum + (q * p);
+                }, 0);
+            }
+
             total += billTotal;
             
             let itemsHtml = items.map(item => {
                 let itemQty = Number(item.qty || item.quantity || 1);
-                let itemTotalPrice = (item.price && !isNaN(item.price)) ? Number(item.price) * itemQty : 0;
-                let itemName = item.name || item.food_name || 'ไม่ระบุชื่อรายการ';
+                let unitPrice = Number(item.price || item.unit_price || 0);
+                let itemTotalPrice = (item.total_price || item.sum) ? Number(item.total_price || item.sum) : (unitPrice * itemQty);
+                let itemName = item.name || item.food_name || item.title || 'ไม่ระบุชื่อรายการ';
                 
                 return `<tr class="border-b border-slate-100">
                     <td class="p-1.5 text-xs text-slate-800">${itemName}</td>
@@ -205,12 +212,17 @@
                     <td class="p-1.5 text-xs text-right font-bold text-blue-600">${itemTotalPrice.toLocaleString()}.-</td>
                 </tr>`;
             }).join('');
+
+            let groupLabel = order.customer_group || order.group_name || order.customer_type || 'ทั่วไป';
+            if (groupLabel.includes(' ')) {
+                groupLabel = groupLabel.split(' ')[0];
+            }
             
             container.innerHTML += `
                 <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2">
                     <div class="flex justify-between border-b pb-2">
                         <span class="font-bold text-xs text-amber-900 bg-amber-100 px-2 py-0.5 rounded">📄 บิลที่ #${order.id || (index + 1)}</span>
-                        <span class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">📍 ${(order.customer_group || order.group_name || 'ทั่วไป').split(' ')[0]}</span>
+                        <span class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">📍 ${groupLabel}</span>
                     </div>
                     <table class="w-full text-left">
                         <tbody>${itemsHtml}</tbody>

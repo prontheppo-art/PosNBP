@@ -185,25 +185,22 @@ async function loadSalesData() {
     }
 
     try {
+        // ดึงเฉพาะออร์เดอร์ที่ไม่ใช่ pending และ cancelled
         const { data: allOrders, error } = await db
             .from('orders')
             .select('*')
             .neq('status', 'pending')
+            .neq('status', 'cancelled')
             .order('id', { ascending: false });
 
         if (error) throw error;
 
-        // กรองเฉพาะออเดอร์ที่วันสร้างตรงกับ selectedDate (รองรับทั้ง created_at และ order_date)
+        // กรองออร์เดอร์โดยตัด String ตรงๆ ป้องกัน Timezone เพี้ยน
         const orders = (allOrders || []).filter(o => {
             let oDate = '';
-            if (o.created_at) {
-                const d = new Date(o.created_at);
-                const year = d.getFullYear();
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                oDate = `${year}-${month}-${day}`;
-            } else if (o.order_date) {
-                oDate = o.order_date.split('T')[0];
+            const rawDate = o.order_date || o.created_at || o.date;
+            if (rawDate) {
+                oDate = rawDate.split('T')[0].split(' ')[0];
             }
             return oDate === selectedDate;
         });
@@ -216,11 +213,8 @@ async function loadSalesData() {
             return;
         }
 
-        orders.sort((a, b) => {
-            let timeA = a.created_at ? new Date(a.created_at).getTime() : a.id;
-            let timeB = b.created_at ? new Date(b.created_at).getTime() : b.id;
-            return timeA - timeB;
-        });
+        // เรียงจาก ID น้อยไปมาก (บิลแรกไปบิลล่าสุด)
+        orders.sort((a, b) => a.id - b.id);
 
         globalGroupData = {};
         let grandTotalOrders = 0;
@@ -228,7 +222,11 @@ async function loadSalesData() {
 
         orders.forEach(order => {
             let groupName = order.customer_group || order.group_name || 'ไม่ระบุกลุ่ม';
-            let billTotal = Number(order.total_price || order.total || 0);
+            if (groupName.includes(' ')) {
+                groupName = groupName.split(' ')[0];
+            }
+
+            let billTotal = Number(order.total_price || order.total_amount || order.total || 0);
 
             if (!globalGroupData[groupName]) {
                 globalGroupData[groupName] = {
@@ -292,11 +290,14 @@ function openModal(groupName) {
     let listHtml = '';
     group.orders.forEach(o => {
         let timeStr = "";
-        if (o.created_at) {
-            let dateObj = new Date(o.created_at);
-            let hours = String(dateObj.getHours()).padStart(2, '0');
-            let minutes = String(dateObj.getMinutes()).padStart(2, '0');
-            timeStr = ` (${hours}:${minutes} น.)`;
+        const rawDate = o.created_at || o.order_date;
+        if (rawDate && rawDate.includes('T')) {
+            // ดึงเวลา HH:mm จาก ISO String ตรงๆ
+            const timePart = rawDate.split('T')[1];
+            if (timePart) {
+                const timeComponents = timePart.split(':');
+                timeStr = ` (${timeComponents[0]}:${timeComponents[1]} น.)`;
+            }
         }
 
         let itemsHtml = '';
@@ -306,18 +307,23 @@ function openModal(groupName) {
                 itemsList = JSON.parse(o.items);
             } else if (Array.isArray(o.items)) {
                 itemsList = o.items;
+            } else if (typeof o.order_items === 'string') {
+                itemsList = JSON.parse(o.order_items);
+            } else if (Array.isArray(o.order_items)) {
+                itemsList = o.order_items;
             }
         } catch (e) {
             itemsList = [];
         }
 
-        let billTotal = Number(o.total_price || o.total || 0);
+        let billTotal = Number(o.total_price || o.total_amount || o.total || 0);
 
         if (itemsList && itemsList.length > 0) {
             itemsList.forEach(item => {
-                let itemName = item.name || item.food_name || 'ไม่ระบุชื่อเมนู';
-                let itemQty = item.qty || item.quantity || 1;
-                let itemPrice = item.price ? Number(item.price) * Number(itemQty) : 0;
+                let itemName = item.name || item.food_name || item.title || 'ไม่ระบุชื่อเมนู';
+                let itemQty = Number(item.qty || item.quantity || 1);
+                let unitPrice = Number(item.price || item.unit_price || 0);
+                let itemPrice = (item.total_price || item.sum) ? Number(item.total_price || item.sum) : (unitPrice * itemQty);
                 let itemComment = item.comment || item.note || '';
 
                 itemsHtml += `

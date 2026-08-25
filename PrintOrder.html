@@ -2,71 +2,69 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>รายการอาหาร (PrintOrder)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <title>รายการอาหาร (PrintOrder.html)</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap');
-        
-        body {
-            font-family: 'Sarabun', sans-serif;
-            background-color: #f1f5f9;
-            margin: 0;
-            padding: 12px;
-            display: flex;
-            justify-content: center;
+        html, body { 
+            height: 100%; margin: 0; padding: 0; 
+            font-family: 'Sarabun', sans-serif; background: #f4f6f9; 
+            -webkit-user-select: none; user-select: none;
         }
 
-        /* การ์ดใบเสร็จบนหน้าจอ */
-        .receipt-card {
-            width: 100%;
-            max-width: 380px;
-            background: #ffffff;
-            border-radius: 24px;
-            padding: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-            display: flex;
-            flex-direction: column;
-            max-height: 94vh; /* จำกัดความสูงการ์ดรวม */
+        .app-layout { 
+            display: flex; align-items: flex-start; justify-content: center; 
+            min-height: 100dvh; width: 100vw; padding: 12px; box-sizing: border-box; 
         }
 
-        /* ส่วนกล่องรายการอาหารที่วงสีแดง ไว้เปิดให้ Scroll บนหน้าจอ */
-        .items-scroll-box {
-            max-height: 260px; /* จำกัดความสูงกล่องรายการอาหารบนหน้าจอ */
-            overflow-y: auto !important;
-            touch-action: pan-y !important;
-            -webkit-overflow-scrolling: touch !important;
+        .bill-container { 
+            width: 100%; max-width: 420px; background: #fff; 
+            border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); 
+            padding: 16px; box-sizing: border-box; display: flex; flex-direction: column;
+            max-height: calc(100dvh - 24px);
+        }
+
+        .food-list-border {
             border: 2px solid #000000;
-            border-radius: 16px;
-            padding: 8px 12px;
+            border-radius: 12px;
+            padding: 12px;
+            margin: 8px 0;
+            background-color: #ffffff;
+            flex: 1 1 auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
-        /* ---------------------------------------------------- */
-        /* CSS สำหรับการสั่งพิมพ์ (Print Mode)                 */
-        /* ---------------------------------------------------- */
+        #reviewQrcode img {
+            margin: 0 auto;
+            display: block;
+            width: 75px;
+            height: 75px;
+        }
+
         @media print {
-            body {
-                background-color: #ffffff !important;
+            body, .app-layout {
+                background: #fff !important;
                 padding: 0 !important;
                 margin: 0 !important;
+                height: auto !important;
             }
-
-            .receipt-card {
-                max-width: 100% !important;
-                max-height: none !important;
+            .bill-container {
                 box-shadow: none !important;
-                padding: 0 !important;
-                border-radius: 0 !important;
-            }
-
-            /* ปลดล็อก Scroll และบังคับให้ขยายความสูงแสดงรายการทั้งหมดขณะพิมพ์ */
-            .items-scroll-box {
                 max-height: none !important;
+                border-radius: 0 !important;
+                padding: 10px !important;
+                width: 100% !important;
+            }
+            .food-list-border {
                 overflow: visible !important;
+                max-height: none !important;
                 border: 2px solid #000000 !important;
             }
-
-            /* ซ่อนปุ่มพิมพ์เมื่อสั่งพิมพ์จริง */
             .no-print {
                 display: none !important;
             }
@@ -75,85 +73,312 @@
 </head>
 <body>
 
-    <div class="receipt-card">
-        <!-- หัวใบเสร็จ -->
-        <div class="text-center mb-3">
-            <h1 class="text-xl font-extrabold text-slate-900">ลาบหนองบัวลำภู @เขื่อนขุนด่าน</h1>
-            <p class="text-xs font-semibold text-slate-600">064-565-4951</p>
-            <p class="text-[11px] font-bold text-slate-700 mt-1" id="receiptHeaderInfo">รายการอาหาร (24/08/2569 19:35) (หน้าร้าน - หน้าร้าน)</p>
-        </div>
-
-        <!-- กล่องรายการอาหาร (ตรงที่วงสีแดง: สกอร์บนจอได้ + ปริ้นออกครบทุกรายการ) -->
-        <div class="items-scroll-box mb-3 space-y-2" id="printItemList">
-            <!-- รายการอาหารจะถูกโหลดมาใส่ตรงนี้ -->
-        </div>
-
-        <!-- สรุปรายการ และราคารวม -->
-        <div class="flex justify-between items-center mb-3 px-1 font-extrabold text-slate-900">
-            <div class="border border-slate-900 rounded-lg px-2 py-1 text-xs">
-                <span id="printTotalSummary">9 รายการ | 9 ชิ้น</span>
+    <div class="app-layout">
+        <div class="bill-container" id="captureArea">
+            
+            <!-- 📌 Header -->
+            <div class="text-center shrink-0 pb-1">
+                <h2 class="font-bold text-lg text-slate-900 leading-tight">ลาบหนองบัวลำภู @เขื่อนขุนด่าน</h2>
+                <div class="text-xs font-semibold text-slate-700 mt-0.5">064-565-4951</div>
+                
+                <div class="flex flex-wrap justify-center items-center gap-1 font-bold text-xs text-slate-900 mt-1.5">
+                    <span>รายการอาหาร</span>
+                    <span id="orderDateTime" class="font-normal text-slate-700">( - )</span>
+                </div>
             </div>
-            <div class="text-base">
-                <span>รวม </span>
-                <span id="printTotalPrice">810</span>
-                <span> บาท</span>
+
+            <!-- 🔄 รายการอาหาร (Scrollable) -->
+            <div class="food-list-border">
+                <div id="billItemList" class="space-y-2.5 text-xs">
+                    <div class="text-center text-slate-400 py-4">กำลังดึงข้อมูลรายการอาหาร...</div>
+                </div>
             </div>
-        </div>
 
-        <div class="border-t border-dashed border-slate-300 my-2"></div>
+            <!-- 📌 Footer -->
+            <div class="shrink-0 pt-1">
+                <div id="orderCustomerInfo" class="text-xs text-slate-700 space-y-0.5 mb-2 px-1"></div>
 
-        <!-- ท้ายใบเสร็จ / QR Code -->
-        <div class="text-center space-y-1 mb-4">
-            <p class="text-xs font-bold text-slate-700">⭐ ขอขอบพระคุณที่อุดหนุนค่ะ ⭐</p>
-            <p class="text-[10px] text-slate-500 font-semibold">แนะนำ ติชม ได้นะคะ 🙏</p>
-            <div class="flex justify-center pt-1">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=PromptPay" alt="QR Code" class="w-24 h-24 border border-slate-300 rounded-lg p-1">
+                <div class="pt-2 border-t border-slate-300">
+                    <div class="flex justify-between items-center text-xs font-bold text-slate-900">
+                        <div id="billSummaryCount" class="border border-black px-2 py-1 rounded">
+                            0 รายการ | 0 ชิ้น
+                        </div>
+                        <div id="billTotalPrice" class="text-base font-black text-slate-900">
+                            รวม 0 บาท
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3 pt-2 border-t border-dashed border-slate-300 text-center">
+                    <div class="text-[11px] font-bold text-slate-800">⭐ ขอขอบพระคุณที่อุดหนุนค่ะ ⭐</div>
+                    <div class="text-[10px] text-slate-600 mb-1">แนะนำ ติชม ได้นะคะ 🙏</div>
+                    
+                    <div class="flex justify-center my-1">
+                        <div id="reviewQrcode" class="p-1.5 border border-slate-900 rounded-lg bg-white inline-block"></div>
+                    </div>
+                </div>
+
+                <button id="saveBtn" onclick="printAndFinish()" class="no-print mt-3 bg-slate-900 hover:bg-black text-white font-bold py-3 px-4 rounded-xl text-sm w-full shadow-md active:scale-95 transition cursor-pointer">
+                    พิมพ์
+                </button>
             </div>
-        </div>
 
-        <!-- ปุ่มกดสั่งพิมพ์ (ซ่อนอัตโนมัติเวลาปริ้น) -->
-        <button type="button" onclick="window.print()" class="no-print w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl text-sm shadow-md active:scale-95 transition">
-            พิมพ์
-        </button>
+        </div>
     </div>
 
     <script>
-        // โหลดข้อมูลจาก LocalStorage มาแสดงผล
+        const SUPABASE_URL = 'https://wmhweeeyulhmoilypklz.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_yXKK7aSunM_KCqRiUhGupQ__Qs1nyCd';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const GOOGLE_MAPS_REVIEW_URL = 'https://maps.app.goo.gl/tRU6iu9r3Fy2NuAY6';
+
+        let currentPendingPayload = null;
+
+        document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+        
         window.onload = function() {
-            const rawCart = localStorage.getItem('cart');
-            const cartItems = rawCart ? JSON.parse(rawCart) : [];
-            const container = document.getElementById('printItemList');
+            loadPendingOrderData();
+            generateReviewQRCode();
+        };
+
+        function cleanNoteText(item) {
+            if (!item) return '';
+            if (typeof item === 'string') {
+                const parts = item.split(',').map(s => s.trim()).filter(Boolean);
+                return [...new Set(parts)].join(', ');
+            }
             
-            if (!container) return;
+            let notes = [];
+            if (item.fried_egg > 0) notes.push(`ไข่ดาว ${item.fried_egg}`);
+            if (item.omelet > 0) notes.push(`ไข่เจียว ${item.omelet}`);
+            if (item.note && item.note.trim()) notes.push(item.note.trim());
+            return notes.join(', ');
+        }
+
+        function generateReviewQRCode() {
+            const qrContainer = document.getElementById('reviewQrcode');
+            qrContainer.innerHTML = '';
+            
+            new QRCode(qrContainer, {
+                text: GOOGLE_MAPS_REVIEW_URL,
+                width: 75,
+                height: 75,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        /* 🌟 ระบบรับและคำนวณข้อมูล */
+        function loadPendingOrderData() {
+            const rawPending = localStorage.getItem('pendingOrderData');
+            const rawCart = localStorage.getItem('cart');
+
+            if (rawPending) {
+                try {
+                    currentPendingPayload = JSON.parse(rawPending);
+                } catch (err) {
+                    console.error('Error parsing pending order data:', err);
+                }
+            }
+
+            if (!currentPendingPayload || !currentPendingPayload.items || currentPendingPayload.items.length === 0) {
+                let items = [];
+                if (rawCart) {
+                    try { items = JSON.parse(rawCart); } catch(e){}
+                }
+
+                const currentGroup = localStorage.getItem('selectedGroupName') || 'ชาวบ้าน';
+                let totalQty = 0;
+                let totalPrice = 0;
+
+                const processedItems = items.map(item => {
+                    const q = Number(item.qty || 1);
+                    const p = Number(item.price || 0);
+                    const isDelivery = item.food_id === 0 || item.name === 'ค่าบริการจัดส่ง' || !!item.isDeliveryFee;
+                    const itemSum = p;
+
+                    if (!isDelivery) {
+                        totalQty += q;
+                    }
+                    totalPrice += itemSum;
+
+                    return {
+                        food_id: item.food_id ?? item.id,
+                        name: item.name || 'รายการอาหาร',
+                        qty: q,
+                        price: itemSum,
+                        note: cleanNoteText(item),
+                        isDeliveryFee: isDelivery
+                    };
+                });
+
+                currentPendingPayload = {
+                    customer_group: currentGroup,
+                    customer_phone: localStorage.getItem('customerPhone') || '',
+                    location_name: localStorage.getItem('selectedLocationName') || '',
+                    zone_name: localStorage.getItem('selectedZoneName') || '',
+                    note: localStorage.getItem('orderNote') || '',
+                    items: processedItems,
+                    total_qty: totalQty,
+                    total_price: totalPrice,
+                    created_at: new Date().toISOString()
+                };
+            }
+
+            renderBill(currentPendingPayload);
+        }
+
+        function renderBill(order) {
+            const items = order.items || [];
+            const container = document.getElementById('billItemList');
             container.innerHTML = '';
 
-            let totalQty = 0;
-            let totalPrice = 0;
+            if (items.length === 0) {
+                container.innerHTML = `<div class="text-center text-slate-400 py-4">ไม่มีรายการอาหาร</div>`;
+                return;
+            }
 
-            cartItems.forEach(item => {
-                const qty = Number(item.qty || 1);
-                const price = Number(item.price || 0);
-                const sum = qty * price;
-                
-                totalQty += qty;
-                totalPrice += sum;
-
-                const row = document.createElement('div');
-                row.className = 'flex justify-between items-center pb-1 border-b border-slate-100 text-xs font-bold text-slate-800';
-                row.innerHTML = `
-                    <div class="truncate pr-2">
-                        <span>${item.name || 'รายการอาหาร'}</span>
-                        <span class="text-slate-500 font-semibold ml-1">x${qty}</span>
-                        ${item.note ? `<div class="text-[10px] text-rose-500 font-normal">${item.note}</div>` : ''}
-                    </div>
-                    <div class="whitespace-nowrap">${sum.toLocaleString()} ฿</div>
-                `;
-                container.appendChild(row);
+            const sortedItems = [...items].sort((a, b) => {
+                const aIsDelivery = a.food_id === 0 || a.name === 'ค่าบริการจัดส่ง' || a.isDeliveryFee;
+                const bIsDelivery = b.food_id === 0 || b.name === 'ค่าบริการจัดส่ง' || b.isDeliveryFee;
+                if (aIsDelivery) return 1;
+                if (bIsDelivery) return -1;
+                return (a.name || '').localeCompare(b.name || '', 'th');
             });
 
-            document.getElementById('printTotalSummary').textContent = `${cartItems.length} รายการ | ${totalQty} ชิ้น`;
-            document.getElementById('printTotalPrice').textContent = totalPrice.toLocaleString();
-        };
+            let calculatedGrandTotal = 0;
+            let realFoodQty = 0;
+            let realFoodCount = 0;
+
+            sortedItems.forEach(item => {
+                const itemName = item.name || '';
+                const itemQty = Number(item.qty || 1);
+                const itemTotalPrice = Number(item.price || 0);
+                const isDelivery = item.food_id === 0 || itemName === 'ค่าบริการจัดส่ง' || item.isDeliveryFee;
+
+                calculatedGrandTotal += itemTotalPrice;
+
+                if (!isDelivery) {
+                    realFoodCount++;
+                    realFoodQty += itemQty;
+                }
+
+                const cleanedNote = cleanNoteText(item.note);
+
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-start pb-2 border-b border-slate-200 last:border-0 last:pb-0';
+                
+                div.innerHTML = `
+                    <div class="pr-2 flex-1">
+                        <div class="font-bold text-slate-900 text-xs ${isDelivery ? 'text-amber-700' : ''}">
+                            ${itemName} ${!isDelivery ? `<span class="font-black text-black">x${itemQty}</span>` : ''}
+                        </div>
+                        ${cleanedNote ? `<div class="text-[11px] text-slate-600 font-semibold mt-0.5 ml-1">▪ ${cleanedNote}</div>` : ''}
+                    </div>
+                    <span class="font-bold text-slate-900 text-xs whitespace-nowrap">${itemTotalPrice.toLocaleString()} ฿</span>
+                `;
+                container.appendChild(div);
+            });
+
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString('th-TH', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const locStr = [order.location_name, order.zone_name].filter(Boolean).join(' - ');
+            const locDisplay = locStr ? ` (${locStr})` : '';
+
+            document.getElementById('orderDateTime').textContent = `(${formattedDate})${locDisplay}`;
+
+            const infoContainer = document.getElementById('orderCustomerInfo');
+            let infoHtml = '';
+            
+            if (order.customer_phone) {
+                infoHtml += `<div><b>โทร:</b> ${order.customer_phone}</div>`;
+            }
+            if (order.note) {
+                infoHtml += `<div class="font-bold text-slate-800"><b>หมายเหตุ:</b> ${order.note}</div>`;
+            }
+            infoContainer.innerHTML = infoHtml;
+
+            const finalTotalQty = order.total_qty !== undefined ? order.total_qty : realFoodQty;
+            const finalTotalPrice = order.total_price !== undefined ? order.total_price : calculatedGrandTotal;
+
+            document.getElementById('billSummaryCount').textContent = `${realFoodCount} รายการ | ${finalTotalQty} ชิ้น`;
+            document.getElementById('billTotalPrice').textContent = `รวม ${finalTotalPrice.toLocaleString()} บาท`;
+        }
+
+        /* 🌟 บันทึกลง Supabase ตาราง orders แล้วสั่งพิมพ์ */
+        async function printAndFinish() {
+            if (!currentPendingPayload || !currentPendingPayload.items || currentPendingPayload.items.length === 0) {
+                alert('ไม่พบข้อมูลออเดอร์สำหรับบันทึก');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerText = '⏳ กำลังบันทึกข้อมูล...';
+
+            try {
+                let rawGroup = currentPendingPayload.customer_group || 'ชาวบ้าน';
+                if (typeof rawGroup === 'string' && rawGroup.includes('(')) {
+                    rawGroup = rawGroup.split('(')[0].trim();
+                }
+
+                // 📌 คำนวณเวลาท้องถิ่นประเทศไทย (ชดเชย +7 ชั่วโมง)
+                const now = new Date();
+                const tzOffset = 7 * 60 * 60 * 1000;
+                const localISOTime = new Date(now.getTime() + tzOffset).toISOString();
+
+                // บันทึกเฉพาะตาราง orders ใน Supabase (ปรับ status เป็น completed และปรับ created_at เป็นเวลาไทย)
+                const payloadToInsert = {
+                    customer_group: rawGroup,
+                    location_name: currentPendingPayload.location_name || null,
+                    zone_name: currentPendingPayload.zone_name || null,
+                    customer_phone: currentPendingPayload.customer_phone || null,
+                    note: currentPendingPayload.note || null,
+                    total_price: currentPendingPayload.total_price,
+                    total_qty: currentPendingPayload.total_qty,
+                    items: currentPendingPayload.items,
+                    status: 'completed',
+                    order_date: localISOTime.split('T')[0],
+                    created_at: localISOTime
+                };
+
+                const { error } = await supabaseClient
+                    .from('orders')
+                    .insert([payloadToInsert]);
+
+                if (error) throw error;
+
+                // สั่งพิมพ์
+                window.print();
+
+                // ล้างข้อมูลออเดอร์ในเครื่อง
+                localStorage.removeItem('pendingOrderData');
+                localStorage.removeItem('cart');
+                localStorage.removeItem('customerPhone');
+                localStorage.removeItem('orderNote');
+                localStorage.removeItem('selectedLocation');
+                localStorage.removeItem('selectedLocationName');
+                localStorage.removeItem('selectedZoneName');
+
+                // กลับหน้าหลัก
+                window.location.href = 'index.html';
+
+            } catch (err) {
+                console.error("เกิดข้อผิดพลาดในการบันทึก: ", err);
+                alert("เกิดข้อผิดพลาดในการบันทึกออเดอร์: " + err.message);
+                saveBtn.disabled = false;
+                saveBtn.innerText = 'พิมพ์';
+            }
+        }
     </script>
 </body>
 </html>

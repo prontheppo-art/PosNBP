@@ -10,3 +10,12 @@ pg_dump "postgresql://postgres.wmhweeeyulhmoilypklz:Rigmr%401801%23@aws-0-ap-sou
 ส่วนนี่ดึงเฉพาะค่าตารางทั้งหมดมาไว้
 
 psql "postgresql://postgres.wmhweeeyulhmoilypklz:Rigmr%401801%23@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres" -c "\copy (SELECT table_catalog AS database_name, table_name, column_name, data_type, ordinal_position AS column_order FROM information_schema.columns WHERE table_schema = 'public' ORDER BY table_name, ordinal_position) TO '~/storage/downloads/all_tables_schema.csv' WITH CSV HEADER"
+
+
+
+
+​Host (Server): aws-0-ap-southeast-1.pooler.supabase.com
+​Port: 6543
+​Database Name: postgres
+​Username: postgres.wmhweeeyulhmoilypklz
+​Password: Rigmr@1801#
