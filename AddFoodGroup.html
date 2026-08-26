@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <title>จัดการกลุ่มรายการอาหาร</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- ดึงการเชื่อมต่อ Supabase จากไฟล์ key.js -->
+    <script src="key.js"></script>
+
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: #f4f6f9;
+        touch-action: pan-y;
+        -webkit-text-size-adjust: 100%;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      .app-layout {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        height: 100dvh;
+        max-width: 480px;
+        margin: 0 auto;
+        background: #fff;
+        box-sizing: border-box;
+        overflow: hidden;
+        padding: 20px 16px 16px 16px;
+      }
+
+      .header-section {
+        background: #fff;
+        z-index: 10;
+        flex-shrink: 0;
+      }
+
+      .content-section {
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        -webkit-overflow-scrolling: touch;
+        min-height: 0;
+      }
+
+      .footer-section {
+        background: #fff;
+        z-index: 10;
+        flex-shrink: 0;
+      }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-start justify-center">
+
+    <div class="w-full bg-white rounded-3xl shadow-2xl app-layout">
+        
+        <!-- ส่วนหัว (Header) -->
+        <div class="header-section pb-3">
+            <h2 class="text-xl font-black text-slate-800 text-center mb-4 tracking-tight">📁 จัดการกลุ่มรายการอาหาร</h2>
+            
+            <div class="bg-gray-50 p-2.5 rounded-2xl border border-gray-200">
+                <div class="flex gap-2">
+                    <input type="text" id="addCategoryInput" placeholder="กรอกชื่อกลุ่มรายการ..." class="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-xs outline-none bg-white focus:border-indigo-500 transition">
+                    <button onclick="handleSaveCategoryAction()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer shadow-2xs">
+                        เพิ่ม
+                    </button>
+                </div>
+            </div>
+            
+            <hr class="border-gray-100 my-3">
+            <div class="text-xs font-bold text-gray-700 flex items-center justify-between">
+                <span class="flex items-center gap-1">📂 กลุ่มรายการอาหารทั้งหมด:</span>
+                <span class="text-[10px] text-gray-400 font-normal">*แตะที่ชื่อเพื่อแก้ไข</span>
+            </div>
+        </div>
+        
+        <!-- รายการหมวดหมู่ (Content) -->
+        <div class="content-section py-1">
+            <div id="categoryListContainer" class="space-y-2 pr-1">
+                <div class="text-center text-gray-400 text-xs py-8">⏳ กำลังโหลดกลุ่มรายการ...</div>
+            </div>
+        </div>
+
+        <!-- ปุ่มล่างสุด 2 ปุ่มย้อนกลับ (Footer) -->
+        <div class="footer-section pt-3 border-t border-gray-100">
+            <div class="grid grid-cols-2 gap-2.5">
+                <a href="PageAdmin.html" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-2xl text-[11px] text-center transition flex items-center justify-center gap-1 shadow-2xs no-underline truncate">
+                    🔑 กลับผู้ดูแลระบบ
+                </a>
+                <a href="addfood.html" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-2xl text-[11px] text-center transition flex items-center justify-center gap-1 shadow-xs no-underline truncate">
+                    🍱 กลับหน้าจัดการเมนู
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal ป๊อปอัปแก้ไขชื่อกลุ่มรายการอาหาร -->
+    <div id="editCategoryModal" onclick="handleOutsideClick(event, 'editCategoryModal')" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-5 text-left space-y-4">
+            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                <h3 class="font-bold text-sm text-gray-800 flex items-center gap-1.5">
+                    <span>✏️</span> แก้ไขชื่อกลุ่มรายการ
+                </h3>
+                <button onclick="closeModal('editCategoryModal')" class="text-gray-400 hover:text-gray-600 text-sm font-bold cursor-pointer">✕</button>
+            </div>
+            
+            <div>
+                <label class="block text-[11px] font-bold text-gray-600 mb-1.5">ชื่อกลุ่มรายการใหม่:</label>
+                <input type="text" id="editCategoryNameInput" placeholder="เช่น ส้มตำ / ลาบ" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs outline-none bg-gray-50 focus:bg-white focus:border-indigo-500 font-medium text-gray-800 transition">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <button onclick="closeModal('editCategoryModal')" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                    ยกเลิก
+                </button>
+                <button onclick="handleUpdateCategory()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-2xs cursor-pointer">
+                    บันทึก
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+      let categories = [];
+      let activeEditingCategoryId = null;
+
+      window.addEventListener('DOMContentLoaded', async () => {
+          if (typeof supabaseClient === 'undefined') {
+              alert('ไม่พบการเชื่อมต่อ Supabase ในไฟล์ key.js');
+              return;
+          }
+
+          await fetchCategories();
+      });
+
+      function openModal(id) {
+          document.getElementById(id)?.classList.remove('hidden');
+      }
+
+      function closeModal(id) {
+          document.getElementById(id)?.classList.add('hidden');
+          if (id === 'editCategoryModal') {
+              activeEditingCategoryId = null;
+          }
+      }
+
+      // ปิด Modal เมื่อคลิกนอกกรอบป๊อปอัป
+      function handleOutsideClick(event, modalId) {
+          if (event.target.id === modalId) {
+              closeModal(modalId);
+          }
+      }
+
+      // ดึงหมวดหมู่จากฐานข้อมูล
+      async function fetchCategories() {
+          const container = document.getElementById('categoryListContainer');
+          try {
+              const { data, error } = await supabaseClient
+                  .from('food_groups')
+                  .select('id, name')
+                  .order('name', { ascending: true });
+
+              if (error) throw error;
+
+              categories = data || [];
+              renderCategoryList();
+          } catch (err) {
+              console.error('Error fetching categories:', err);
+              if (container) {
+                  container.innerHTML = `<div class="text-center text-red-400 text-xs py-4">ไม่สามารถโหลดข้อมูลได้</div>`;
+              }
+          }
+      }
+
+      // แสดงรายการหมวดหมู่
+      function renderCategoryList() {
+          const container = document.getElementById('categoryListContainer');
+          if (!container) return;
+
+          if (categories.length === 0) {
+              container.innerHTML = `<div class="text-center text-gray-400 text-xs py-8">ไม่มีกลุ่มรายการอาหาร</div>`;
+              return;
+          }
+
+          container.innerHTML = categories.map(c => `
+              <div class="flex items-center justify-between bg-white border border-gray-200 hover:border-indigo-200 rounded-2xl px-3.5 py-2.5 text-xs transition shadow-2xs">
+                  <span onclick="openEditCategoryModal(${c.id}, '${c.name.replace(/'/g, "\\'")}')" class="font-medium text-gray-700 truncate cursor-pointer flex-1 py-0.5 hover:text-indigo-600 transition">
+                      📁 ${c.name}
+                  </span>
+                  <button onclick="handleDeleteCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')" class="w-6 h-6 bg-red-50 hover:bg-red-100 text-red-500 rounded-full flex items-center justify-center text-xs font-bold transition shrink-0 ml-2 cursor-pointer" title="ลบหมวดหมู่">
+                      ✕
+                  </button>
+              </div>
+          `).join('');
+      }
+
+      // เปิด Modal แก้ไขชื่อหมวดหมู่
+      function openEditCategoryModal(id, currentName) {
+          activeEditingCategoryId = id;
+          document.getElementById('editCategoryNameInput').value = currentName;
+          openModal('editCategoryModal');
+      }
+
+      // บันทึกการแก้ไขชื่อหมวดหมู่ลง Supabase
+      async function handleUpdateCategory() {
+          if (!activeEditingCategoryId) return;
+
+          const newName = document.getElementById('editCategoryNameInput').value.trim();
+
+          if (!newName) {
+              alert('กรุณากรอกชื่อกลุ่มรายการ');
+              return;
+          }
+
+          try {
+              const { error } = await supabaseClient
+                  .from('food_groups')
+                  .update({ name: newName })
+                  .eq('id', activeEditingCategoryId);
+
+              if (error) throw error;
+
+              closeModal('editCategoryModal');
+              await fetchCategories();
+          } catch (err) {
+              alert('ไม่สามารถอัปเดตได้: ' + err.message);
+          }
+      }
+
+      // เพิ่มหมวดหมู่ใหม่
+      async function handleSaveCategoryAction() {
+          const input = document.getElementById('addCategoryInput');
+          const name = input.value.trim();
+
+          if (!name) return;
+
+          try {
+              const { error } = await supabaseClient
+                  .from('food_groups')
+                  .insert([{ name: name }]);
+
+              if (error) throw error;
+
+              input.value = '';
+              await fetchCategories();
+          } catch (err) {
+              alert('ไม่สามารถเพิ่มได้: ' + err.message);
+          }
+      }
+
+      // ลบหมวดหมู่
+      async function handleDeleteCategory(id, name) {
+          if (!confirm(`คุณต้องการลบกลุ่มรายการ "${name}" ใช่หรือไม่?`)) return;
+
+          try {
+              const { error } = await supabaseClient
+                  .from('food_groups')
+                  .delete()
+                  .eq('id', id);
+
+              if (error) throw error;
+
+              await fetchCategories();
+          } catch (err) {
+              alert('ไม่สามารถลบได้: ' + err.message);
+          }
+      }
+    </script>
+</body>
+</html>

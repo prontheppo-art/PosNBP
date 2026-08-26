@@ -150,8 +150,8 @@
             }
             
             let notes = [];
-            if (item.fried_egg > 0) notes.push(`ไข่ดาว ${item.fried_egg}`);
-            if (item.omelet > 0) notes.push(`ไข่เจียว ${item.omelet}`);
+            if (item.fried_egg > 0) notes.push(`ไข่ดาว +${item.fried_egg}`);
+            if (item.omelet > 0) notes.push(`ไข่เจียว +${item.omelet}`);
             if (item.note && item.note.trim()) notes.push(item.note.trim());
             return notes.join(', ');
         }
@@ -170,19 +170,81 @@
             });
         }
 
-        /* 🌟 ระบบรับและคำนวณข้อมูล */
+        /* 🌟 ระบบรับและคำนวณข้อมูลจาก Confirm Order */
         function loadPendingOrderData() {
-            const rawPending = localStorage.getItem('pendingOrderData');
+            // ดึงข้อมูลจาก key 'pendingOrder' (จาก Confirm Order) หรือ fallback เป็น 'pendingOrderData'
+            const rawPending = localStorage.getItem('pendingOrder') || localStorage.getItem('pendingOrderData');
             const rawCart = localStorage.getItem('cart');
 
             if (rawPending) {
                 try {
-                    currentPendingPayload = JSON.parse(rawPending);
+                    const parsed = JSON.parse(rawPending);
+                    
+                    // กรณีเป็นแพ็กเกจโครงสร้างใหม่จาก Confirm Order
+                    if (parsed.cart && Array.isArray(parsed.cart)) {
+                        const groupId = Number(parsed.groupId) || 1;
+                        let processedItems = [];
+                        let totalQty = 0;
+
+                        parsed.cart.forEach(item => {
+                            const q = Number(item.qty || 1);
+                            
+                            // คำนวณราคาตามกลุ่มลูกค้า
+                            let basePrice = 0;
+                            if (groupId === 1) basePrice = Number(item.price_1 || item.price || 0);
+                            else if (groupId === 2) basePrice = Number(item.price_2 || item.price || 0);
+                            else if (groupId === 3) basePrice = Number(item.price_3 || item.price || 0);
+
+                            const eggCost = (Number(item.fried_egg) || 0) * 10;
+                            const omeletCost = (Number(item.omelet) || 0) * 10;
+                            const unitPrice = basePrice + eggCost + omeletCost;
+                            const itemTotalPrice = unitPrice * q;
+
+                            totalQty += q;
+
+                            processedItems.push({
+                                food_id: item.food_id || item.id,
+                                name: item.name || 'รายการอาหาร',
+                                qty: q,
+                                price: itemTotalPrice,
+                                note: cleanNoteText(item),
+                                isDeliveryFee: false
+                            });
+                        });
+
+                        // เพิ่มแถบค่าบริการจัดส่ง (ถ้ามี)
+                        if (parsed.deliveryFee && Number(parsed.deliveryFee) > 0) {
+                            processedItems.push({
+                                food_id: 0,
+                                name: 'ค่าบริการจัดส่ง (สั่งไม่ถึง 300.-)',
+                                qty: 1,
+                                price: Number(parsed.deliveryFee),
+                                note: '',
+                                isDeliveryFee: true
+                            });
+                        }
+
+                        currentPendingPayload = {
+                            customer_group: parsed.groupName || 'ชาวบ้าน',
+                            customer_phone: parsed.customerPhone || '',
+                            location_name: parsed.locationName || '',
+                            zone_name: parsed.zoneName || '',
+                            note: parsed.orderNote || '',
+                            items: processedItems,
+                            total_qty: totalQty,
+                            total_price: parsed.grandTotal || parsed.subtotal,
+                            created_at: parsed.createdAt || new Date().toISOString()
+                        };
+                    } else {
+                        // โครงสร้างเดิม
+                        currentPendingPayload = parsed;
+                    }
                 } catch (err) {
                     console.error('Error parsing pending order data:', err);
                 }
             }
 
+            // Fallback กรณีไม่มี pendingOrder ให้ดึงจาก cart ใน LocalStorage
             if (!currentPendingPayload || !currentPendingPayload.items || currentPendingPayload.items.length === 0) {
                 let items = [];
                 if (rawCart) {
@@ -241,8 +303,8 @@
             }
 
             const sortedItems = [...items].sort((a, b) => {
-                const aIsDelivery = a.food_id === 0 || a.name === 'ค่าบริการจัดส่ง' || a.isDeliveryFee;
-                const bIsDelivery = b.food_id === 0 || b.name === 'ค่าบริการจัดส่ง' || b.isDeliveryFee;
+                const aIsDelivery = a.food_id === 0 || a.name.includes('ค่าบริการจัดส่ง') || a.isDeliveryFee;
+                const bIsDelivery = b.food_id === 0 || b.name.includes('ค่าบริการจัดส่ง') || b.isDeliveryFee;
                 if (aIsDelivery) return 1;
                 if (bIsDelivery) return -1;
                 return (a.name || '').localeCompare(b.name || '', 'th');
@@ -256,7 +318,7 @@
                 const itemName = item.name || '';
                 const itemQty = Number(item.qty || 1);
                 const itemTotalPrice = Number(item.price || 0);
-                const isDelivery = item.food_id === 0 || itemName === 'ค่าบริการจัดส่ง' || item.isDeliveryFee;
+                const isDelivery = item.food_id === 0 || itemName.includes('ค่าบริการจัดส่ง') || item.isDeliveryFee;
 
                 calculatedGrandTotal += itemTotalPrice;
 
@@ -331,12 +393,10 @@
                     rawGroup = rawGroup.split('(')[0].trim();
                 }
 
-                // 📌 คำนวณเวลาท้องถิ่นประเทศไทย (ชดเชย +7 ชั่วโมง)
                 const now = new Date();
                 const tzOffset = 7 * 60 * 60 * 1000;
                 const localISOTime = new Date(now.getTime() + tzOffset).toISOString();
 
-                // บันทึกเฉพาะตาราง orders ใน Supabase (ปรับ status เป็น completed และปรับ created_at เป็นเวลาไทย)
                 const payloadToInsert = {
                     customer_group: rawGroup,
                     location_name: currentPendingPayload.location_name || null,
@@ -357,10 +417,10 @@
 
                 if (error) throw error;
 
-                // สั่งพิมพ์
                 window.print();
 
-                // ล้างข้อมูลออเดอร์ในเครื่อง
+                // ล้างข้อมูลออเดอร์ในเครื่องทั้งหมดเมื่อบันทึกเสร็จ
+                localStorage.removeItem('pendingOrder');
                 localStorage.removeItem('pendingOrderData');
                 localStorage.removeItem('cart');
                 localStorage.removeItem('customerPhone');
@@ -369,7 +429,6 @@
                 localStorage.removeItem('selectedLocationName');
                 localStorage.removeItem('selectedZoneName');
 
-                // กลับหน้าหลัก
                 window.location.href = 'index.html';
 
             } catch (err) {

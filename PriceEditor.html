@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* ล็อกหน้าจอไม่ให้ขยายหรือเลื่อนทั้งหน้า */
         html, body { 
             height: 100%; 
             margin: 0; 
@@ -30,7 +29,6 @@
             overflow: hidden;
         }
 
-        /* ปรับความสูงกรอบตารางให้พอดีกับหน้าจอ ไม่ล้นและไม่หายไปด้านล่าง */
         .category-card {
             display: flex;
             flex-direction: column;
@@ -44,7 +42,6 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        /* พื้นที่เลื่อนเฉพาะรายการอาหารด้านใน */
         .card-body-scroll {
             overflow-y: auto;
             flex: 1;
@@ -52,7 +49,6 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* ล็อกหัวตารางสีฟ้าให้อยู่ด้านบนสุดของพื้นที่เลื่อนเสมอ */
         .sticky-th {
             position: sticky;
             top: 0;
@@ -65,21 +61,18 @@
     <div class="app-layout">
         <div class="w-[97%] max-w-xl bg-white rounded-3xl shadow-xl p-4 sm:p-6 h-[92vh] flex flex-col relative overflow-hidden">
             
-            <!-- ส่วนหัวหลักด้านบนสุด (ล็อกนิ่ง) -->
+            <!-- ส่วนหัวหลักด้านบนสุด -->
             <div class="shrink-0 bg-white pb-2 relative z-20">
                 <h2 class="text-xl font-bold text-gray-800 text-center mb-2">🏷️ ดูแลและแก้ไขตารางราคา</h2>
                 
                 <div class="flex items-center gap-2 mb-2">
-                    <!-- Custom Select Button -->
                     <div class="relative w-full">
                         <button type="button" onclick="toggleCategoryDropdown()" id="categorySelectBtn" class="w-full border border-gray-300 rounded-2xl px-4 py-3 text-xs font-bold text-gray-700 outline-none bg-white flex items-center justify-between shadow-2xs cursor-pointer">
                             <span id="selectedCategoryText" class="truncate">-- แสดงทุกหมวดหมู่ --</span>
                             <span class="text-gray-400 text-[10px] shrink-0 ml-1">▼</span>
                         </button>
                         
-                        <!-- Custom Popup รายการหมวดหมู่ -->
                         <div id="categoryDropdownPopup" class="hidden absolute left-0 top-full mt-1.5 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 p-2 space-y-1 max-h-60 overflow-y-auto w-max min-w-full">
-                            <!-- รายการจะถูกเรนเดอร์มาใส่ตรงนี้ -->
                         </div>
                     </div>
 
@@ -91,16 +84,63 @@
 
             <hr class="border-gray-100 my-1 shrink-0">
 
-            <!-- ส่วนตารางหลัก (ให้สโครลเฉพาะพื้นที่ข้างในกรอบ) -->
+            <!-- ส่วนตารางหลัก -->
             <div id="tablesContainer" class="space-y-4 flex-1 min-h-0 flex flex-col pr-1 pb-4 overflow-y-auto relative z-0" style="-webkit-overflow-scrolling: touch;">
                 <div class="text-center text-gray-400 text-xs py-8">⏳ กำลังโหลดข้อมูลเมนูและราคา...</div>
             </div>
         </div>
     </div>
 
+    <!-- Modal ป๊อปอัปเพิ่มรายการอาหาร -->
+    <div id="addFoodModal" onclick="handleOutsideClick(event, 'addFoodModal')" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-5 text-left space-y-4">
+            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                <h3 class="font-bold text-sm text-gray-800 flex items-center gap-1.5">
+                    <span>🍱</span> เพิ่มรายการอาหาร
+                </h3>
+                <button onclick="closeModal('addFoodModal')" class="text-gray-400 hover:text-gray-600 text-sm font-bold cursor-pointer">✕</button>
+            </div>
+            
+            <div class="bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1">
+                <span>📂 หมวดหมู่:</span>
+                <span id="targetCategoryNameDisplay" class="truncate">...</span>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-600 mb-1">ชื่อรายการอาหาร:</label>
+                    <input type="text" id="addFoodNameInput" placeholder="เช่น ตำป่า / ลาบหมู" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 font-medium text-gray-800 transition">
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-600 mb-1 text-center">ชาวบ้าน</label>
+                        <input type="number" id="addFoodPrice1Input" placeholder="0" class="w-full border border-gray-300 rounded-xl py-2 px-1 text-center text-xs font-bold text-gray-700 outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 transition">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-600 mb-1 text-center">นักท่องเที่ยว</label>
+                        <input type="number" id="addFoodPrice2Input" placeholder="0" class="w-full border border-gray-300 rounded-xl py-2 px-1 text-center text-xs font-bold text-gray-700 outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 transition">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-600 mb-1 text-center">สบายดี</label>
+                        <input type="number" id="addFoodPrice3Input" placeholder="0" class="w-full border border-gray-300 rounded-xl py-2 px-1 text-center text-xs font-bold text-gray-700 outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 transition">
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <button onclick="closeModal('addFoodModal')" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                    ยกเลิก
+                </button>
+                <button onclick="handleSaveNewFood()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-2xs cursor-pointer">
+                    บันทึก
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="key.js"></script>
     <script>
-        // ป้องกันการซูมหน้าจอด้วยนิ้ว
         document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
         document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
         document.addEventListener('gestureend', function (e) { e.preventDefault(); }, { passive: false });
@@ -124,9 +164,9 @@
         let menus = [];
         let foodGroups = []; 
         let currentSelectedCategory = 'all';
+        let targetAddGroupId = null;
 
         window.addEventListener('DOMContentLoaded', async () => {
-            // เชื่อมต่อ Supabase อย่างปลอดภัย
             if (typeof window.supabaseClient !== 'undefined') {
                 db = window.supabaseClient;
             } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
@@ -148,9 +188,29 @@
             });
         });
 
+        function openModal(id) {
+            document.getElementById(id)?.classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id)?.classList.add('hidden');
+            if (id === 'addFoodModal') {
+                targetAddGroupId = null;
+                document.getElementById('addFoodNameInput').value = '';
+                document.getElementById('addFoodPrice1Input').value = '';
+                document.getElementById('addFoodPrice2Input').value = '';
+                document.getElementById('addFoodPrice3Input').value = '';
+            }
+        }
+
+        function handleOutsideClick(event, modalId) {
+            if (event.target.id === modalId) {
+                closeModal(modalId);
+            }
+        }
+
         async function loadAllData() {
             try {
-                // ดึงเฉพาะตาราง foods และ food_groups
                 const [ { data: mData }, { data: fgData } ] = await Promise.all([
                     db.from('foods').select('*'),
                     db.from('food_groups').select('*').order('name', { ascending: true })
@@ -159,9 +219,8 @@
                 menus = mData || [];
                 foodGroups = fgData || [];
 
-                // หากไม่มีตาราง food_groups หรือหาไม่เจอ ให้ดึงจาก category_id ใน foods อัตโนมัติ
                 if (foodGroups.length === 0 && menus.length > 0) {
-                    const uniqueCats = [...new Set(menus.map(m => m.category || m.category_id).filter(Boolean))];
+                    const uniqueCats = [...new Set(menus.map(m => m.group_id).filter(Boolean))];
                     foodGroups = uniqueCats.map((cat) => ({ id: cat, name: `กลุ่ม ${cat}` }));
                 }
 
@@ -223,58 +282,64 @@
             let allTablesHtml = '';
 
             targetCategories.forEach(currentCat => {
-                // กรองเมนูโดยเช็คจาก category_id ตรงกับ Supabase
                 const catMenus = menus
-                    .filter(m => String(m.category_id) === String(currentCat.id) || String(m.category) === String(currentCat.name))
+                    .filter(m => String(m.group_id) === String(currentCat.id))
                     .sort((a, b) => {
                         const nameA = (a.name || '').trim();
                         const nameB = (b.name || '').trim();
                         return nameA.localeCompare(nameB, 'th', { sensitivity: 'base', numeric: true });
                     });
 
-                if (catMenus.length === 0) return;
-
                 let rowsHtml = '';
-                catMenus.forEach((m, index) => {
-                    const borderClass = index === catMenus.length - 1 ? 'bg-white' : 'border-b border-gray-200 bg-white';
+                if (catMenus.length > 0) {
+                    catMenus.forEach((m, index) => {
+                        const borderClass = index === catMenus.length - 1 ? 'bg-white' : 'border-b border-gray-200 bg-white';
 
-                    rowsHtml += `
-                        <tr class="${borderClass}">
-                            <td class="p-2.5 font-bold text-gray-800 text-left pl-3 truncate" style="width: 37%;">${m.name}</td>
-                            <td class="p-1.5 text-center" style="width: 21%;">
-                                <input type="number" value="${m.price_1 || 0}" 
-                                       onfocus="this.select()"
-                                       onblur="updatePriceDirect('${m.id}', 'price_1', this.value)"
-                                       class="w-full max-w-[58px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
-                            </td>
-                            <td class="p-1.5 text-center" style="width: 21%;">
-                                <input type="number" value="${m.price_2 || 0}" 
-                                       onfocus="this.select()"
-                                       onblur="updatePriceDirect('${m.id}', 'price_2', this.value)"
-                                       class="w-full max-w-[58px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
-                            </td>
-                            <td class="p-1.5 text-center" style="width: 21%;">
-                                <input type="number" value="${m.price_3 || 0}" 
-                                       onfocus="this.select()"
-                                       onblur="updatePriceDirect('${m.id}', 'price_3', this.value)"
-                                       class="w-full max-w-[58px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
-                            </td>
+                        rowsHtml += `
+                            <tr class="${borderClass}">
+                                <td class="p-2.5 font-bold text-gray-800 text-left pl-3 truncate" style="width: 37%;">${m.name}</td>
+                                <td class="p-1.5 text-center" style="width: 21%;">
+                                    <input type="number" value="${m.price_1 || 0}" 
+                                           onfocus="this.select()"
+                                           onblur="updatePriceDirect('${m.id}', 'price_1', this.value)"
+                                           class="w-full max-w-[58px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
+                                </td>
+                                <td class="p-1.5 text-center" style="width: 21%;">
+                                    <input type="number" value="${m.price_2 || 0}" 
+                                           onfocus="this.select()"
+                                           onblur="updatePriceDirect('${m.id}', 'price_2', this.value)"
+                                           class="w-full max-w-[58px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
+                                </td>
+                                <td class="p-1.5 text-center" style="width: 21%;">
+                                    <input type="number" value="${m.price_3 || 0}" 
+                                           onfocus="this.select()"
+                                           onblur="updatePriceDirect('${m.id}', 'price_3', this.value)"
+                                           class="w-full max-w-[58px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    rowsHtml = `
+                        <tr>
+                            <td colspan="4" class="text-center text-gray-400 text-xs py-6">ยังไม่มีรายการอาหารในหมวดนี้</td>
                         </tr>
                     `;
-                });
+                }
 
                 allTablesHtml += `
                     <div class="category-card">
-                        <!-- หัวข้อหมวดหมู่ ล็อกนิ่งอยู่บนสุดของกรอบ ไม่ขยับตามการเลื่อน -->
-                        <div class="bg-slate-700 text-white font-bold py-2.5 px-4 text-xs flex items-center gap-1.5 shrink-0 z-20">
-                            <span>📁</span> หมวดหมู่: ${currentCat.name}
+                        <div class="bg-slate-700 text-white font-bold py-2 px-3 text-xs flex items-center justify-between shrink-0 z-20">
+                            <span class="truncate flex items-center gap-1.5">📁 หมวดหมู่: ${currentCat.name}</span>
+                            <button onclick="openAddFoodModal('${currentCat.id}', '${currentCat.name.replace(/'/g, "\\'")}')" 
+                                    class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-xs flex items-center gap-1 shrink-0 cursor-pointer">
+                                ➕ เมนู
+                            </button>
                         </div>
                         
-                        <!-- พื้นที่เลื่อนเฉพาะรายการอาหารด้านใน -->
                         <div class="card-body-scroll">
                             <table class="w-full text-xs border-collapse table-fixed">
                                 <thead>
-                                    <!-- หัวตารางสีฟ้า ล็อกติดอยู่ด้านบนเวลากวาดนิ้วเลื่อน -->
                                     <tr class="bg-blue-500 text-white font-bold sticky-th">
                                         <th class="p-2.5 text-left pl-3 bg-blue-500" style="width: 37%;">รายการอาหาร</th>
                                         <th class="p-2.5 text-center bg-blue-500" style="width: 21%;">ชาวบ้าน</th>
@@ -292,18 +357,61 @@
             });
 
             if (!allTablesHtml) {
-                container.innerHTML = `<div class="text-center text-gray-400 text-xs py-8">ไม่พบข้อมูลอาหารในหมวดหมู่ที่เลือก</div>`;
+                container.innerHTML = `<div class="text-center text-gray-400 text-xs py-8">ไม่พบข้อมูลหมวดหมู่ที่เลือก</div>`;
                 return;
             }
 
             container.innerHTML = allTablesHtml;
         }
 
-        // ฟังก์ชันอัปเดตราคา บันทึกตรงเข้าตาราง foods คอลัมน์ price_1, price_2, price_3
+        function openAddFoodModal(groupId, groupName) {
+            targetAddGroupId = groupId;
+            document.getElementById('targetCategoryNameDisplay').textContent = groupName;
+            document.getElementById('addFoodNameInput').value = '';
+            document.getElementById('addFoodPrice1Input').value = '';
+            document.getElementById('addFoodPrice2Input').value = '';
+            document.getElementById('addFoodPrice3Input').value = '';
+            openModal('addFoodModal');
+        }
+
+        async function handleSaveNewFood() {
+            if (!targetAddGroupId) return;
+
+            const name = document.getElementById('addFoodNameInput').value.trim();
+            const p1 = parseFloat(document.getElementById('addFoodPrice1Input').value) || 0;
+            const p2 = parseFloat(document.getElementById('addFoodPrice2Input').value) || 0;
+            const p3 = parseFloat(document.getElementById('addFoodPrice3Input').value) || 0;
+
+            if (!name) {
+                alert('กรุณากรอกชื่อรายการอาหาร');
+                return;
+            }
+
+            try {
+                const newFoodItem = {
+                    name: name,
+                    group_id: targetAddGroupId,
+                    price_1: p1,
+                    price_2: p2,
+                    price_3: p3
+                };
+
+                const { data, error } = await db.from('foods')
+                    .insert([newFoodItem])
+                    .select();
+
+                if (error) throw error;
+
+                closeModal('addFoodModal');
+                await loadAllData();
+            } catch (err) {
+                alert('ไม่สามารถเพิ่มรายการอาหารได้: ' + err.message);
+            }
+        }
+
         async function updatePriceDirect(foodId, priceColumn, newPrice) {
             const parsedPrice = newPrice === '' ? 0 : parseFloat(newPrice);
             
-            // อัปเดตข้อมูลชั่วคราวใน Memory
             const item = menus.find(m => String(m.id) === String(foodId));
             if (item) {
                 item[priceColumn] = parsedPrice;
@@ -313,7 +421,6 @@
                 const updateData = {};
                 updateData[priceColumn] = parsedPrice;
 
-                // แปลง foodId เป็น Integer (parseInt) ก่อนส่งไปอัปเดตที่ Supabase
                 const { error } = await db.from('foods')
                     .update(updateData)
                     .eq('id', parseInt(foodId));

@@ -227,7 +227,7 @@
 
 <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 shadow-lg z-50">
     <div class="max-w-2xl mx-auto flex gap-2">
-        <a href="index.html" class="bg-white hover:bg-gray-50 text-slate-800 border border-slate-300 font-bold py-2.5 px-3 rounded-xl text-xs flex-1 text-center shadow transition flex items-center justify-center">
+        <a href="OrderEntry.html" class="bg-white hover:bg-gray-50 text-slate-800 border border-slate-300 font-bold py-2.5 px-3 rounded-xl text-xs flex-1 text-center shadow transition flex items-center justify-center">
             ⬅️ กลับไปแก้ไข
         </a>
         <button onclick="submitOrder()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex-1 text-center shadow transition">
@@ -259,16 +259,14 @@
     </div>
 </div>
 
+<script src="key.js"></script>
 <script>
-    const SUPABASE_URL = 'https://wmhweeeyulhmoilypklz.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_yXKK7aSunM_KCqRiUhGupQ__Qs1nyCd';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    let dbFoodsMap = {}; 
     let locationsData = [];
     let zonesData = [];
     let tempSelectedLocation = null;
-    let isDeliveryFeeDismissed = false;
+    let isDeliveryFeeWaived = false; // สถานะการยกเว้นค่าจัดส่งมือหมุน
 
     let savedTouristLocation = localStorage.getItem('selectedLocationName') || '';
     let savedTouristZone = localStorage.getItem('selectedZoneName') || '';
@@ -282,15 +280,33 @@
     }, { passive: false });
 
     window.addEventListener('DOMContentLoaded', async () => {
-        await fetchLocationsAndZones();
+        await Promise.all([
+            fetchLocationsAndZones(),
+            fetchLatestFoods()
+        ]);
 
         document.getElementById('customerPhoneInput').value = savedCustomerPhone;
         document.getElementById('orderNoteInput').value = savedOrderNote;
 
-        selectCustomerGroup(1, 'ชาวบ้าน');
-
-        renderOrderSummary();
+        const savedGroupId = Number(localStorage.getItem('selectedGroupId')) || 1;
+        const savedGroupName = localStorage.getItem('selectedGroupName') || 'ชาวบ้าน';
+        selectCustomerGroup(savedGroupId, savedGroupName);
     });
+
+    async function fetchLatestFoods() {
+        try {
+            const { data, error } = await supabaseClient.from('foods').select('*');
+            if (error) throw error;
+            if (data) {
+                dbFoodsMap = {};
+                data.forEach(f => {
+                    dbFoodsMap[String(f.id)] = f;
+                });
+            }
+        } catch (err) {
+            console.error('Error fetching foods:', err);
+        }
+    }
 
     function handlePhoneChange(val) {
         savedCustomerPhone = val;
@@ -330,8 +346,8 @@
     }
 
     function selectCustomerGroup(groupId, groupName) {
-        isDeliveryFeeDismissed = false;
         localStorage.setItem('selectedGroupId', groupId);
+        isDeliveryFeeWaived = false; // รีเซ็ตการยกเว้นค่าจัดส่งเมื่อเปลี่ยนกลุ่ม
 
         const locationBtnContainer = document.getElementById('locationBtnContainer');
 
@@ -456,255 +472,179 @@
         localStorage.setItem('selectedGroupName', groupName);
 
         document.querySelectorAll('.group-btn-v2').forEach(btn => btn.classList.remove('active'));
-        document.getElementById(`btn-group-${groupId}`).classList.add('active');
+        const activeBtn = document.getElementById(`btn-group-${groupId}`);
+        if (activeBtn) activeBtn.classList.add('active');
 
         renderOrderSummary();
     }
 
     function getGroupBasePrice(item, groupId) {
-        const gId = Number(groupId);
-        if (gId === 1) return Number(item.price_group_1 ?? item.price ?? 0);
-        if (gId === 2) return Number(item.price_group_2 ?? item.price ?? 0);
-        if (gId === 3) return Number(item.price_group_3 ?? item.price ?? 0);
-        return Number(item.price ?? 0);
-    }
+        const gId = Number(groupId) || 1;
+        const fId = String(item.food_id);
 
-    function buildItemNoteText(item) {
-        const parts = [];
-        const egg = Number(item.fried_egg || 0);
-        const omelet = Number(item.omelet || 0);
-        const note = (item.note || '').trim();
+        if (gId === 1 && item.price_1 !== undefined && item.price_1 > 0) return Number(item.price_1);
+        if (gId === 2 && item.price_2 !== undefined && item.price_2 > 0) return Number(item.price_2);
+        if (gId === 3 && item.price_3 !== undefined && item.price_3 > 0) return Number(item.price_3);
 
-        if (egg > 0) parts.push(`ไข่ดาว ${egg}`);
-        if (omelet > 0) parts.push(`ไข่เจียว ${omelet}`);
-        if (note) parts.push(note);
+        if (dbFoodsMap[fId]) {
+            const foodObj = dbFoodsMap[fId];
+            if (gId === 1) return Number(foodObj.price_1 || 0);
+            if (gId === 2) return Number(foodObj.price_2 || 0);
+            if (gId === 3) return Number(foodObj.price_3 || 0);
+        }
 
-        return parts.join(', ');
+        return 0;
     }
 
     function removeDeliveryFee() {
-        isDeliveryFeeDismissed = true;
+        isDeliveryFeeWaived = true;
         renderOrderSummary();
     }
 
-    function openModal(modalId) {
-        document.getElementById(modalId).classList.add('active');
-    }
+    function renderOrderSummary() {
+        cart = JSON.parse(localStorage.getItem('cart')) || [];
+        const currentGroupId = Number(document.getElementById('customerGroupSelect').value) || 1;
+        const selectedLoc = document.getElementById('selectedLocationName').value || '';
 
-    function closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('active');
-    }
+        const totalItems = cart.length;
+        const totalQty = cart.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+        document.getElementById('cartCountText').textContent = `${totalItems} รายการ | ${totalQty} ชิ้น`;
 
-    function handleOutsideClick(event, modalId) {
-        if (event.target.id === modalId) {
-            closeModal(modalId);
+        const listContainer = document.getElementById('cartPreviewList');
+        if (!listContainer) return;
+
+        if (cart.length === 0) {
+            listContainer.innerHTML = '<span class="text-gray-400 text-xs py-8 text-center block">ไม่มีรายการอาหารในตะกร้า</span>';
+            document.getElementById('cartTotalPrice').textContent = 'รวม 0.-';
+            return;
         }
+
+        let totalCartPrice = 0;
+        listContainer.innerHTML = '';
+
+        cart.forEach((item, index) => {
+            const basePrice = getGroupBasePrice(item, currentGroupId);
+            const eggCost = (Number(item.fried_egg) || 0) * 10;
+            const omeletCost = (Number(item.omelet) || 0) * 10;
+            const unitPrice = basePrice + eggCost + omeletCost;
+            const itemTotalPrice = unitPrice * (Number(item.qty) || 1);
+
+            totalCartPrice += itemTotalPrice;
+
+            let details = [];
+            if (item.fried_egg > 0) details.push(`ไข่ดาว +${item.fried_egg}`);
+            if (item.omelet > 0) details.push(`ไข่เจียว +${item.omelet}`);
+            if (item.note) details.push(`Note: ${item.note}`);
+
+            const row = document.createElement('div');
+            row.className = 'cart-item-row';
+            row.innerHTML = `
+                <div class="flex-1 pr-2">
+                    <div class="font-bold text-xs text-slate-800">${item.name}</div>
+                    <div class="text-[11px] text-slate-500">${unitPrice} x ${item.qty}</div>
+                    ${details.length > 0 ? `<div class="text-[10px] text-amber-600 font-medium">${details.join(', ')}</div>` : ''}
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="font-extrabold text-xs text-slate-800">${itemTotalPrice}.-</span>
+                    <button type="button" onclick="removeItem(${index})" class="delete-btn">&times;</button>
+                </div>
+            `;
+            listContainer.appendChild(row);
+        });
+
+        // คำนวณค่าบริการจัดส่ง (เฉพาะนักท่องเที่ยว + ไม่ใช่หน้าร้าน + สั่งไม่ถึง 300 + ยังไม่โดนกดลบ)
+        let deliveryFee = 0;
+        const isStoreFront = selectedLoc.includes('หน้าร้าน');
+        if (currentGroupId === 2 && !isStoreFront && !isDeliveryFeeWaived) {
+            if (totalCartPrice < 300) {
+                deliveryFee = 20;
+            }
+        }
+
+        if (deliveryFee > 0) {
+            const deliveryRow = document.createElement('div');
+            deliveryRow.className = 'cart-item-row bg-amber-50/60 p-2 rounded-xl my-1 border border-amber-100';
+            deliveryRow.innerHTML = `
+                <div class="flex-1 pr-2 flex items-center gap-1">
+                    <span class="text-sm">🛵</span>
+                    <div>
+                        <div class="font-bold text-xs text-amber-900">ค่าบริการจัดส่ง <span class="text-[10px] text-amber-600 font-normal">(สั่งไม่ถึง 300.-)</span></div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="font-extrabold text-xs text-amber-900">${deliveryFee}.-</span>
+                    <button type="button" onclick="removeDeliveryFee()" class="delete-btn" title="ยกเลิกค่าจัดส่ง">&times;</button>
+                </div>
+            `;
+            listContainer.appendChild(deliveryRow);
+        }
+
+        const grandTotal = totalCartPrice + deliveryFee;
+        document.getElementById('cartTotalPrice').textContent = `รวม ${grandTotal}.-`;
     }
 
-    function removeFromCart(index) {
+    function removeItem(index) {
         cart.splice(index, 1);
         localStorage.setItem('cart', JSON.stringify(cart));
         renderOrderSummary();
     }
 
-    function renderOrderSummary() {
-        const listContainer = document.getElementById('cartPreviewList');
-        const cartTotalPrice = document.getElementById('cartTotalPrice');
-        const cartCountText = document.getElementById('cartCountText');
-        const selectedGroupId = document.getElementById('customerGroupSelect').value;
-
-        if (!cart || cart.length === 0) {
-            listContainer.innerHTML = '<span class="text-gray-400 text-xs py-4 text-center block">ไม่มีรายการในตะกร้า</span>';
-            cartTotalPrice.innerText = 'รวม 0.-';
-            cartCountText.innerText = '0 รายการ | 0 ชิ้น';
-            return;
-        }
-
-        let totalQty = 0;
-        let subtotal = 0;
-        let itemsHtml = '';
-
-        cart.forEach((item, index) => {
-            const basePrice = getGroupBasePrice(item, selectedGroupId);
-            const addOnPrice = Number(item.add_on_price || 0);
-            const unitPrice = basePrice + addOnPrice;
-            const itemQty = Number(item.qty || 1);
-            const itemTotal = unitPrice * itemQty;
-
-            subtotal += itemTotal;
-            totalQty += itemQty;
-
-            const noteText = buildItemNoteText(item);
-
-            itemsHtml += `
-                <div class="cart-item-row">
-                    <div class="flex-1 pr-2">
-                        <div class="font-bold text-xs text-slate-800">${item.name}</div>
-                        ${noteText ? `<div class="text-[10px] text-amber-600">${noteText}</div>` : ''}
-                        <div class="text-[11px] text-slate-500">${unitPrice} x ${itemQty}</div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="font-bold text-xs text-slate-700">${itemTotal}.-</span>
-                        <button onclick="removeFromCart(${index})" class="delete-btn">✕</button>
-                    </div>
-                </div>
-            `;
-        });
-
-        let deliveryFee = 0;
-        if (Number(selectedGroupId) === 2 && !isDeliveryFeeDismissed) {
-            deliveryFee = 20;
-            itemsHtml += `
-                <div class="cart-item-row bg-amber-50/60 p-2 rounded-lg my-1">
-                    <div class="flex-1">
-                        <div class="font-bold text-xs text-amber-800">🛵 ค่าจัดส่ง (นักท่องเที่ยว)</div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="font-bold text-xs text-amber-800">20.-</span>
-                        <button onclick="removeDeliveryFee()" class="delete-btn text-amber-600">✕</button>
-                    </div>
-                </div>
-            `;
-        }
-
-        const grandTotal = subtotal + deliveryFee;
-
-        listContainer.innerHTML = itemsHtml;
-        cartTotalPrice.innerText = `รวม ${grandTotal}.-`;
-        cartCountText.innerText = `${cart.length} รายการ | ${totalQty} ชิ้น`;
+    function openModal(id) {
+        document.getElementById(id).classList.add('active');
     }
 
-    // -------------------------------------------------------------
-    // ฟังก์ชันส่งออเดอร์ + ตัดสต็อกอัตโนมัติ (ไม่บล็อกการขาย + แจ้งเตือนของหมด)
-    // -------------------------------------------------------------
-    async function submitOrder() {
-        if (!cart || cart.length === 0) {
-            alert('❌ ไม่มีรายการอาหารในตะกร้า');
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    function handleOutsideClick(e, id) {
+        if (e.target.id === id) closeModal(id);
+    }
+
+    function submitOrder() {
+        if (cart.length === 0) {
+            alert('กรุณาเลือกรายการอาหารก่อนส่งออเดอร์');
             return;
         }
 
         const groupId = document.getElementById('customerGroupSelect').value;
         const groupName = document.getElementById('selectedGroupName').value;
-        const customerPhone = document.getElementById('customerPhoneInput').value;
-        const orderNote = document.getElementById('orderNoteInput').value;
+        const phone = document.getElementById('customerPhoneInput').value;
+        const note = document.getElementById('orderNoteInput').value;
         const locationName = document.getElementById('selectedLocationName').value;
         const zoneName = document.getElementById('selectedZoneName').value;
 
-        if (Number(groupId) === 2 && (!locationName || !zoneName)) {
-            alert('⚠️ กรุณาเลือกสถานที่และ Zone/ห้องพัก สำหรับนักท่องเที่ยว');
-            openLocationModal();
-            return;
-        }
-
+        // คำนวณราคาสินค้าและค่าจัดส่งล่าสุดก่อนส่งข้อมูล
         let subtotal = 0;
         cart.forEach(item => {
             const basePrice = getGroupBasePrice(item, groupId);
-            const addOnPrice = Number(item.add_on_price || 0);
-            const qty = Number(item.qty || 1);
-            subtotal += (basePrice + addOnPrice) * qty;
+            const eggCost = (Number(item.fried_egg) || 0) * 10;
+            const omeletCost = (Number(item.omelet) || 0) * 10;
+            subtotal += (basePrice + eggCost + omeletCost) * (Number(item.qty) || 1);
         });
 
         let deliveryFee = 0;
-        if (Number(groupId) === 2 && !isDeliveryFeeDismissed) {
+        if (Number(groupId) === 2 && !locationName.includes('หน้าร้าน') && !isDeliveryFeeWaived && subtotal < 300) {
             deliveryFee = 20;
         }
-        const grandTotal = subtotal + deliveryFee;
 
-        try {
-            // STEP 1: บันทึกออเดอร์หลัก
-            const { data: orderData, error: orderError } = await supabaseClient
-                .from('orders')
-                .insert([{
-                    customer_group_id: groupId,
-                    customer_group_name: groupName,
-                    customer_phone: customerPhone,
-                    location_name: locationName,
-                    zone_name: zoneName,
-                    order_note: orderNote,
-                    subtotal: subtotal,
-                    delivery_fee: deliveryFee,
-                    total_price: grandTotal,
-                    status: 'pending',
-                    created_at: new Date().toISOString()
-                }])
-                .select();
+        const orderData = {
+            cart: cart,
+            groupId: groupId,
+            groupName: groupName,
+            customerPhone: phone,
+            orderNote: note,
+            locationName: locationName,
+            zoneName: zoneName,
+            subtotal: subtotal,
+            deliveryFee: deliveryFee,
+            grandTotal: subtotal + deliveryFee,
+            createdAt: new Date().toISOString()
+        };
 
-            if (orderError) throw orderError;
-            const newOrderId = orderData[0]?.id;
-
-            // STEP 2: บันทึกรายการอาหาร
-            const orderItemsToInsert = cart.map(item => ({
-                order_id: newOrderId,
-                food_id: item.id || item.food_id,
-                food_name: item.name,
-                price: getGroupBasePrice(item, groupId),
-                qty: item.qty || 1,
-                note: buildItemNoteText(item)
-            }));
-
-            const { error: itemsError } = await supabaseClient
-                .from('order_items')
-                .insert(orderItemsToInsert);
-
-            if (itemsError) throw itemsError;
-
-            // STEP 3: ตัดสต็อกวัตถุดิบ (ติดลบได้ ไม่บล็อกการขาย)
-            let outOfStockList = [];
-
-            for (const item of cart) {
-                const foodId = item.id || item.food_id;
-                const itemQty = Number(item.qty || 1);
-
-                const { data: mappings, error: mapErr } = await supabaseClient
-                    .from('food_mappings')
-                    .select('stock_name')
-                    .eq('food_id', foodId);
-
-                if (mapErr || !mappings || mappings.length === 0) continue;
-
-                for (const map of mappings) {
-                    const { data: stockData, error: stockErr } = await supabaseClient
-                        .from('food_stocks')
-                        .select('id, quantity, food_name')
-                        .eq('food_name', map.stock_name)
-                        .maybeSingle();
-
-                    if (stockErr || !stockData) continue;
-
-                    const currentQty = Number(stockData.quantity || 0);
-                    const newQty = currentQty - itemQty;
-
-                    await supabaseClient
-                        .from('food_stocks')
-                        .update({
-                            quantity: newQty,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', stockData.id);
-
-                    if (newQty <= 0) {
-                        outOfStockList.push(`${stockData.food_name} (คงเหลือ: ${newQty})`);
-                    }
-                }
-            }
-
-            // STEP 4: เคลียร์ Cart และแจ้งเตือน
-            localStorage.removeItem('cart');
-            localStorage.removeItem('orderNote');
-
-            let successMessage = '✅ บันทึกออเดอร์เรียบร้อยแล้ว!';
-            if (outOfStockList.length > 0) {
-                const uniqueWarnings = [...new Set(outOfStockList)];
-                successMessage += '\n\n⚠️ คำเตือนวัตถุดิบหมด/ติดลบ:\n- ' + uniqueWarnings.join('\n- ');
-            }
-
-            alert(successMessage);
-            window.location.href = 'index.html';
-
-        } catch (err) {
-            console.error('Error submitting order:', err);
-            alert('❌ เกิดข้อผิดพลาดในการบันทึกออเดอร์: ' + err.message);
-        }
+        // บันทึกแพ็กเกจข้อมูลออเดอร์ลง LocalStorage แล้วย้ายไปหน้า PrintOrder.html
+        localStorage.setItem('pendingOrder', JSON.stringify(orderData));
+        window.location.href = 'PrintOrder.html';
     }
 </script>
 </body>

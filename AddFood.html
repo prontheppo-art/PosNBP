@@ -69,9 +69,9 @@
             <div class="space-y-3">
                 <div class="flex items-center justify-between">
                     <label class="block text-xs font-bold text-gray-700">หมวดหมู่</label>
-                    <button type="button" onclick="openCategoryManagerModal()" class="text-[11px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full transition flex items-center gap-1 shadow-2xs">
+                    <a href="addfoodgroup.html" class="text-[11px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full transition flex items-center gap-1 shadow-2xs no-underline">
                         ✏️ จัดการกลุ่มรายการ
-                    </button>
+                    </a>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
@@ -104,10 +104,10 @@
         <!-- ปุ่มล่างสุด (Footer) -->
         <div class="footer-section pt-3 border-t border-gray-100">
             <div class="grid grid-cols-2 gap-3">
-                <a href="PageAdmin.html" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-2xl text-xs text-center transition flex items-center justify-center gap-1.5 shadow-2xs">
+                <a href="PageAdmin.html" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-2xl text-xs text-center transition flex items-center justify-center gap-1.5 shadow-2xs no-underline">
                     🔑 กลับผู้ดูแลระบบ
                 </a>
-                <button onclick="handleSaveMenu()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-2xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs">
+                <button onclick="handleSaveMenu()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-2xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer">
                     💾 บันทึก
                 </button>
             </div>
@@ -121,7 +121,7 @@
                 <h3 id="modalFoodTitle" class="font-bold text-sm text-gray-800 flex items-center gap-1.5">
                     <span>✏️</span> แก้ไขรายการอาหาร
                 </h3>
-                <button onclick="closeModal('editMenuModal')" class="text-gray-400 hover:text-gray-600 text-sm font-bold">✕</button>
+                <button onclick="closeModal('editMenuModal')" class="text-gray-400 hover:text-gray-600 text-sm font-bold cursor-pointer">✕</button>
             </div>
             
             <div class="space-y-3">
@@ -156,28 +156,9 @@
             </div>
 
             <div class="grid grid-cols-2 gap-2 pt-2">
-                <button onclick="closeModal('editMenuModal')" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs transition">ปิดหน้าต่าง</button>
-                <button onclick="handleUpdateMenuFromModal()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-2xs">บันทึกราคา</button>
+                <button onclick="closeModal('editMenuModal')" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">ปิดหน้าต่าง</button>
+                <button onclick="handleUpdateMenuFromModal()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-2xs cursor-pointer">บันทึกราคา</button>
             </div>
-        </div>
-    </div>
-
-    <!-- Modal จัดการกลุ่มรายการ -->
-    <div id="categoryManagerModal" onclick="handleOutsideClick(event, 'categoryManagerModal')" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 flex flex-col space-y-3 max-h-[80vh]">
-            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
-                <h3 class="font-bold text-sm text-gray-800">จัดการกลุ่มรายการอาหาร</h3>
-                <button onclick="closeModal('categoryManagerModal')" class="text-gray-400 hover:text-gray-600 text-sm font-bold">✕</button>
-            </div>
-
-            <div class="bg-gray-50 p-2.5 rounded-2xl border border-gray-200 space-y-2">
-                <div class="flex gap-2">
-                    <input type="text" id="editCategoryInput" placeholder="ชื่อกลุ่มรายการ..." class="flex-1 border border-gray-300 rounded-xl px-3 py-1.5 text-xs outline-none bg-white">
-                    <button onclick="handleSaveCategoryAction()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0">เพิ่ม</button>
-                </div>
-            </div>
-
-            <div class="flex-1 overflow-y-auto space-y-1.5 pr-1" id="modalCategoryListContainer"></div>
         </div>
     </div>
 
@@ -187,7 +168,7 @@
             <div id="alertIcon" class="text-3xl">⚠️</div>
             <h3 id="alertTitle" class="font-bold text-sm text-gray-800">แจ้งเตือน</h3>
             <p id="alertMessage" class="text-xs text-gray-600"></p>
-            <button onclick="closeModal('alertModal')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-xl text-xs">ตกลง</button>
+            <button onclick="closeModal('alertModal')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-xl text-xs cursor-pointer">ตกลง</button>
         </div>
     </div>
 
@@ -247,7 +228,6 @@
           openModal('alertModal');
       }
 
-      // 1. ดึงข้อมูลจาก food_groups (id, name)
       async function fetchCategories() {
           const { data, error } = await supabaseClient
               .from('food_groups')
@@ -258,11 +238,9 @@
           if (data) {
               state.categories = data;
               renderDropdownMenu();
-              renderModalCategoryList();
           }
       }
 
-      // 2. ดึงข้อมูลจาก foods (id, name, group_id, price_1, price_2, price_3)
       async function fetchMenus() {
           const { data, error } = await supabaseClient
               .from('foods')
@@ -326,7 +304,7 @@
 
           container.innerHTML = filtered.map(m => `
               <div class="flex items-center bg-white border border-gray-200 rounded-2xl p-1.5 pl-2 shadow-2xs hover:border-gray-300 transition">
-                  <button onclick="handleDeleteMenu(${m.id}, '${m.name.replace(/'/g, "\\'")}')" class="w-6 h-6 bg-red-100/70 hover:bg-red-200 text-red-500 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mr-2 transition">✕</button>
+                  <button onclick="handleDeleteMenu(${m.id}, '${m.name.replace(/'/g, "\\'")}')" class="w-6 h-6 bg-red-100/70 hover:bg-red-200 text-red-500 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mr-2 transition cursor-pointer">✕</button>
                   
                   <span onclick="openEditMenuModal(${m.id})" class="text-xs font-medium text-gray-700 truncate cursor-pointer flex-1 py-1">
                       ${m.name}
@@ -335,7 +313,6 @@
           `).join('');
       }
 
-      // เปิดดูและแก้ไขรายการอาหาร
       function openEditMenuModal(foodId) {
           const item = state.menus.find(m => Number(m.id) === Number(foodId));
           if (!item) return;
@@ -343,7 +320,6 @@
           state.activeFoodId = Number(foodId);
           openModal('editMenuModal');
 
-          // โหลดตัวเลือกกลุ่มอาหาร
           const catSelect = document.getElementById('modalCategorySelect');
           catSelect.innerHTML = state.categories.map(c => 
               `<option value="${c.id}" ${String(c.id) === String(item.group_id) ? 'selected' : ''}>📁 ${c.name}</option>`
@@ -355,7 +331,6 @@
           document.getElementById('modal_price_3').value = item.price_3 || 0;
       }
 
-      // บันทึกการแก้ไขข้อมูลจาก Modal
       async function handleUpdateMenuFromModal() {
           if (!state.activeFoodId) return;
           const targetFoodId = Number(state.activeFoodId);
@@ -395,7 +370,6 @@
           }
       }
 
-      // เพิ่มอาหารใหม่
       async function handleSaveMenu() {
           const categoryId = state.selectedCategory;
           const nameInput = document.getElementById('menuNameInput');
@@ -434,7 +408,6 @@
           }
       }
 
-      // ลบอาหาร
       async function handleDeleteMenu(id, name) {
           if (!confirm(`คุณต้องการลบรายการ "${name}" ใช่หรือไม่?`)) return;
 
@@ -450,68 +423,6 @@
               showAlert('สำเร็จ', 'ลบรายการเรียบร้อยแล้ว', '✅');
           } catch (err) {
               showAlert('ข้อผิดพลาด', 'ไม่สามารถลบได้: ' + err.message);
-          }
-      }
-
-      // แสดงหมวดหมู่ใน Modal จัดการกลุ่ม
-      function openCategoryManagerModal() {
-          openModal('categoryManagerModal');
-      }
-
-      function renderModalCategoryList() {
-          const container = document.getElementById('modalCategoryListContainer');
-          if (!container) return;
-
-          if (state.categories.length === 0) {
-              container.innerHTML = `<div class="text-center text-gray-400 text-xs py-4">ไม่มีกลุ่มรายการอาหาร</div>`;
-              return;
-          }
-
-          container.innerHTML = state.categories.map(c => `
-              <div class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs">
-                  <span class="font-medium text-gray-700 truncate">📁 ${c.name}</span>
-                  <button onclick="handleDeleteCategory(${c.id})" class="text-red-500 hover:text-red-700 font-bold ml-2">✕</button>
-              </div>
-          `).join('');
-      }
-
-      // เพิ่มหมวดหมู่ (ไม่มี Pop-up แจ้งเตือน)
-      async function handleSaveCategoryAction() {
-          const input = document.getElementById('editCategoryInput');
-          const name = input.value.trim();
-
-          if (!name) return;
-
-          try {
-              const { error } = await supabaseClient
-                  .from('food_groups')
-                  .insert([{ name: name }]);
-
-              if (error) throw error;
-
-              input.value = '';
-              await fetchCategories();
-          } catch (err) {
-              console.error('ไม่สามารถเพิ่มได้:', err.message);
-          }
-      }
-
-      // ลบหมวดหมู่ (ลบทันที ไม่มี Pop-up ถามยืนยัน/แจ้งเตือน)
-      async function handleDeleteCategory(id) {
-          try {
-              const { error } = await supabaseClient
-                  .from('food_groups')
-                  .delete()
-                  .eq('id', id);
-
-              if (error) throw error;
-
-              await fetchCategories();
-              if (state.selectedCategory == id) {
-                  selectCategory('all', '-- แสดงทั้งหมด --');
-              }
-          } catch (err) {
-              console.error('ไม่สามารถลบได้:', err.message);
           }
       }
     </script>
