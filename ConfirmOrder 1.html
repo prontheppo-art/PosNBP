@@ -227,7 +227,7 @@
 
 <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 shadow-lg z-50">
     <div class="max-w-2xl mx-auto flex gap-2">
-        <a href="Order.html" class="bg-white hover:bg-gray-50 text-slate-800 border border-slate-300 font-bold py-2.5 px-3 rounded-xl text-xs flex-1 text-center shadow transition flex items-center justify-center">
+        <a href="OrderEntry.html" class="bg-white hover:bg-gray-50 text-slate-800 border border-slate-300 font-bold py-2.5 px-3 rounded-xl text-xs flex-1 text-center shadow transition flex items-center justify-center">
             ⬅️ กลับไปแก้ไข
         </a>
         <button onclick="submitOrder()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex-1 text-center shadow transition">
@@ -266,7 +266,7 @@
     let locationsData = [];
     let zonesData = [];
     let tempSelectedLocation = null;
-    let isDeliveryFeeWaived = false;
+    let isDeliveryFeeWaived = false; // สถานะการยกเว้นค่าจัดส่งมือหมุน
 
     let savedTouristLocation = localStorage.getItem('selectedLocationName') || '';
     let savedTouristZone = localStorage.getItem('selectedZoneName') || '';
@@ -347,7 +347,7 @@
 
     function selectCustomerGroup(groupId, groupName) {
         localStorage.setItem('selectedGroupId', groupId);
-        isDeliveryFeeWaived = false;
+        isDeliveryFeeWaived = false; // รีเซ็ตการยกเว้นค่าจัดส่งเมื่อเปลี่ยนกลุ่ม
 
         const locationBtnContainer = document.getElementById('locationBtnContainer');
 
@@ -478,13 +478,7 @@
         renderOrderSummary();
     }
 
-    // ฟังก์ชันคำนวณราคาฐาน (รองรับราคาพิเศษ)
     function getGroupBasePrice(item, groupId) {
-        // หากมีราคาพิเศษถูกระบุมา ให้ใช้ราคาพิเศษก่อนเสมอ
-        if (item.is_custom_price && Number(item.custom_price) > 0) {
-            return Number(item.custom_price);
-        }
-
         const gId = Number(groupId) || 1;
         const fId = String(item.food_id);
 
@@ -538,9 +532,6 @@
             totalCartPrice += itemTotalPrice;
 
             let details = [];
-            if (item.is_custom_price && Number(item.custom_price) > 0) {
-                details.push(`⭐ ราคาพิเศษ ${item.custom_price}.-`);
-            }
             if (item.fried_egg > 0) details.push(`ไข่ดาว +${item.fried_egg}`);
             if (item.omelet > 0) details.push(`ไข่เจียว +${item.omelet}`);
             if (item.note) details.push(`Note: ${item.note}`);
@@ -561,6 +552,7 @@
             listContainer.appendChild(row);
         });
 
+        // คำนวณค่าบริการจัดส่ง (เฉพาะนักท่องเที่ยว + ไม่ใช่หน้าร้าน + สั่งไม่ถึง 300 + ยังไม่โดนกดลบ)
         let deliveryFee = 0;
         const isStoreFront = selectedLoc.includes('หน้าร้าน');
         if (currentGroupId === 2 && !isStoreFront && !isDeliveryFeeWaived) {
@@ -622,6 +614,7 @@
         const locationName = document.getElementById('selectedLocationName').value;
         const zoneName = document.getElementById('selectedZoneName').value;
 
+        // คำนวณราคาสินค้าและค่าจัดส่งล่าสุดก่อนส่งข้อมูล
         let subtotal = 0;
         cart.forEach(item => {
             const basePrice = getGroupBasePrice(item, groupId);
@@ -649,6 +642,7 @@
             createdAt: new Date().toISOString()
         };
 
+        // บันทึกแพ็กเกจข้อมูลออเดอร์ลง LocalStorage แล้วย้ายไปหน้า PrintOrder.html
         localStorage.setItem('pendingOrder', JSON.stringify(orderData));
         window.location.href = 'PrintOrder.html';
     }
