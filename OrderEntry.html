@@ -158,6 +158,12 @@
                 </div>
             </div>
 
+            <!-- เพิ่มช่องกรอกราคาพิเศษ -->
+            <div class="border-t border-slate-100 pt-2 flex items-center justify-between gap-2">
+                <span class="text-xs font-bold text-amber-600 whitespace-nowrap">ราคาพิเศษ:</span>
+                <input type="number" id="modalCustomPriceInput" placeholder="ระบุราคาพิเศษ" class="w-full text-xs p-2 border border-amber-300 rounded-xl bg-amber-50/40 focus:outline-none focus:border-amber-500 focus:bg-white placeholder:text-amber-400 font-bold text-amber-700 text-right">
+            </div>
+
             <div class="border-t border-slate-100 pt-2">
                 <input type="text" id="modalNoteInput" placeholder="( รายละเอียดเพิ่มเติม NOTE )" class="w-full text-xs p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-emerald-500 focus:bg-white placeholder:text-slate-400">
             </div>
@@ -367,6 +373,9 @@
     function openOrderModal(food) {
         currentFoodItem = food;
         const existingIndex = cart.findIndex(i => String(i.food_id) === String(food.id));
+        
+        let customPriceVal = '';
+
         if (existingIndex > -1) {
             const item = cart[existingIndex];
             currentModalData = { 
@@ -375,6 +384,11 @@
                 omelet: Number(item.omelet) || 0, 
                 note: item.note || '' 
             };
+
+            // โหลดราคาพิเศษเดิมที่เคยระบุไว้ (ถ้ามี)
+            if (item.is_custom_price && item.custom_price) {
+                customPriceVal = item.custom_price;
+            }
         } else {
             currentModalData = { qty: 1, fried_egg: 0, omelet: 0, note: '' };
         }
@@ -384,6 +398,7 @@
         document.getElementById('modalEggVal').innerText = currentModalData.fried_egg;
         document.getElementById('modalOmeletVal').innerText = currentModalData.omelet;
         document.getElementById('modalNoteInput').value = currentModalData.note;
+        document.getElementById('modalCustomPriceInput').value = customPriceVal;
 
         const foodGroupId = Number(food.group_id);
         const isBoxMeal = BOX_MEAL_GROUP_IDS.includes(foodGroupId);
@@ -427,9 +442,14 @@
         if (!currentFoodItem) return;
 
         const note = document.getElementById('modalNoteInput').value.trim();
+        
+        // ดึงและตรวจเช็กค่าราคาพิเศษ
+        const customPriceRaw = document.getElementById('modalCustomPriceInput').value;
+        const customPriceVal = parseFloat(customPriceRaw);
+        const hasCustomPrice = !isNaN(customPriceVal) && customPriceVal > 0;
+
         const existingIndex = cart.findIndex(i => String(i.food_id) === String(currentFoodItem.id));
 
-        // ดึงราคาตาม Schema ของตาราง foods ตรงๆ
         const orderItem = {
             food_id: String(currentFoodItem.id),
             name: currentFoodItem.name,
@@ -437,6 +457,9 @@
             fried_egg: currentModalData.fried_egg,
             omelet: currentModalData.omelet,
             note: note,
+            // บันทึกฟิลด์ราคาพิเศษ
+            is_custom_price: hasCustomPrice,
+            custom_price: hasCustomPrice ? customPriceVal : 0,
             price_1: Number(currentFoodItem.price_1 || 0),
             price_2: Number(currentFoodItem.price_2 || 0),
             price_3: Number(currentFoodItem.price_3 || 0)
