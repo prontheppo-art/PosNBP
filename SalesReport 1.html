@@ -73,7 +73,7 @@
         </div>
     </div>
 
-    <!-- โมดอลรายละเอียดออร์เดอร์ -->
+    <!-- โมดอลรายละเอียดออร์เดอร์ (เพิ่ม onclick สั่งปิดเมื่อแตะพื้นหลัง) -->
     <div id="detailModal" onclick="handleOutsideClick(event)" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-200 p-4">
         <div class="bg-white w-[90%] max-w-[340px] rounded-2xl p-5 shadow-2xl transform scale-95 transition-transform duration-200" id="detailBox">
             <div class="flex justify-between items-center border-b border-gray-100 pb-2 mb-3">
@@ -136,18 +136,6 @@
             const parts = dateString.split('T')[0].split(' ')[0].split('-');
             if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
             return dateString;
-        }
-
-        // ฟังก์ชันประมวลผลนับจำนวนบิลออเดอร์ในแต่ละวัน
-        function getOrderCounts() {
-            const counts = {};
-            allOrders.forEach(order => {
-                const dateStr = getOrderDateStr(order);
-                if (dateStr) {
-                    counts[dateStr] = (counts[dateStr] || 0) + 1;
-                }
-            });
-            return counts;
         }
 
         window.addEventListener('DOMContentLoaded', async () => {
@@ -281,11 +269,9 @@
             renderOrderHistory(filtered);
         }
 
-        // ฟังก์ชันเปิด CalendarSystem พร้อมส่งข้อมูลนับบิล
         function openCustomCalendar() {
             if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.open === 'function') {
-                const eventCounts = getOrderCounts(); // ดึงจำนวนบิลรายวัน
-                CalendarSystem.open(CalendarSystem.selectedDateStr, eventCounts); // ส่งเข้าไปยังปฏิทิน
+                CalendarSystem.open(CalendarSystem.selectedDateStr);
             } else {
                 alert("ระบบปฏิทินไม่พร้อมใช้งาน");
             }
@@ -322,6 +308,7 @@
                             <span class="font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-lg text-xs truncate max-w-[140px]" title="${customerGroup}">${customerGroup}</span>
                         </div>
                         <button type="button" onclick="openDetailModal(${order.id})" class="text-blue-600 hover:text-blue-800 p-1.5 transition shrink-0 ml-auto cursor-pointer rounded-lg hover:bg-blue-50" title="ดูรายละเอียด">
+                            <!-- SVG Icon รายละเอียด (Document / List Icon) -->
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
@@ -390,6 +377,7 @@
             box.classList.add('scale-95');
         }
 
+        // ฟังก์ชันตรวจจับการกดนอกกรอบกล่องข้อความเพื่อสั่งปิดโมดอล
         function handleOutsideClick(event) {
             if (event.target.id === 'detailModal') {
                 closeDetailModal();

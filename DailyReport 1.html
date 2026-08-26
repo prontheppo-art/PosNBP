@@ -104,27 +104,9 @@
         }
     }
 
-    // ฟังก์ชั่นสรุปจำนวนบิลแยกตามวันที่ (คัดกรองเฉพาะสถานะที่ไม่ใช่ cancelled หรือ pending)
-    function getOrderCounts() {
-        const counts = {};
-        allOrdersCache.forEach(o => {
-            const rawDate = o.order_date || o.created_at || o.date;
-            if (rawDate) {
-                const oDate = rawDate.split('T')[0].split(' ')[0];
-                const status = (o.status || '').toLowerCase();
-                if (status !== 'cancelled' && status !== 'pending') {
-                    counts[oDate] = (counts[oDate] || 0) + 1;
-                }
-            }
-        });
-        return counts;
-    }
-
-    // ฟังก์ชั่นเปิดปฏิทินพร้อมส่งวัตถุข้อมูลจำนวนบิล
     function openCalendar() {
         if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.open === 'function') {
-            const counts = getOrderCounts();
-            CalendarSystem.open(currentSelectedDate, counts);
+            CalendarSystem.open(currentSelectedDate);
         } else {
             console.warn("CalendarSystem is not available");
         }

@@ -1,4 +1,4 @@
-// slender.js - ไฟล์กลางสำหรับปฏิทิน (อัปเดตเพิ่มวงกลมสีแดงรอบวันปัจจุบัน)
+// slender.js - ไฟล์กลางสำหรับปฏิทิน (อัปเดตเพิ่มวงกลมสีแดงรอบวันปัจจุบัน + Badge จำนวนออเดอร์)
 const CalendarSystem = {
     modalHTML: `
         <div id="calendarModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
@@ -22,6 +22,7 @@ const CalendarSystem = {
     activeYear: new Date().getFullYear(),
     activeMonth: new Date().getMonth(),
     onDateSelected: null,
+    eventsData: {}, // เก็บข้อมูลจำนวนบิล เช่น { '2026-08-25': 2, '2026-08-26': 7 }
 
     init(callback) {
         this.onDateSelected = callback;
@@ -30,10 +31,12 @@ const CalendarSystem = {
         }
     },
 
-    open(currentDate) {
+    // อัปเดตฟังก์ชัน open ให้รับพารามิเตอร์ events เพิ่ม
+    open(currentDate, events = {}) {
         let date = currentDate ? new Date(currentDate) : new Date();
         this.activeYear = date.getFullYear();
         this.activeMonth = date.getMonth();
+        this.eventsData = events || {}; // นำข้อมูลมาเก็บไว้ใช้ตอน render
         this.render();
         document.getElementById('calendarModal').classList.remove('hidden');
     },
@@ -62,7 +65,6 @@ const CalendarSystem = {
         let firstDay = new Date(this.activeYear, this.activeMonth, 1).getDay();
         let totalDays = new Date(this.activeYear, this.activeMonth + 1, 0).getDate();
 
-        // วันที่ปัจจุบันของระบบ (ใช้เทียบเพื่อทำวงกลมสีแดง)
         let now = new Date();
         let todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
@@ -72,18 +74,28 @@ const CalendarSystem = {
             let dStr = `${this.activeYear}-${String(this.activeMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
             let btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'h-9 w-9 mx-auto rounded-full font-bold text-xs flex items-center justify-center transition ';
-            btn.textContent = d;
+            // เพิ่ม class 'relative' เพื่อให้ใส่ Badge แจ้งเตือนมุมขวาบนได้
+            btn.className = 'relative h-9 w-9 mx-auto rounded-full font-bold text-xs flex items-center justify-center transition ';
 
             let isToday = (dStr === todayStr);
 
-            // เช็คเงื่อนไขใส่กรอบ/วงกลมสีแดงให้วันปัจจุบัน
             if (isToday) {
                 btn.className += ' border-2 border-rose-500 text-rose-600 bg-rose-50 ';
             } else {
                 btn.className += ' text-slate-700 hover:bg-slate-100';
             }
 
+            // ตรวจสอบว่าวันนี้มีข้อมูลออเดอร์หรือไม่
+            let eventCount = this.eventsData[dStr] || 0;
+            let badgeHtml = '';
+            
+            if (eventCount > 0) {
+                // สร้าง Badge สีแดงมุมขวาบน แสดงจำนวนบิล
+                badgeHtml = `<span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px] flex items-center justify-center shadow-sm border border-white leading-none">${eventCount}</span>`;
+            }
+
+            // แทรกตัวเลขวันที่ และ Badge ลงไปในปุ่ม
+            btn.innerHTML = `<span>${d}</span>${badgeHtml}`;
             btn.onclick = () => { this.onDateSelected(dStr); this.close(); };
             grid.appendChild(btn);
         }
