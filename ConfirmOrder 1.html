@@ -288,8 +288,9 @@
         document.getElementById('customerPhoneInput').value = savedCustomerPhone;
         document.getElementById('orderNoteInput').value = savedOrderNote;
 
-        // บังคับ Default เป็น "ชาวบ้าน" (Group ID: 1) เสมอ
-        selectCustomerGroup(1, 'ชาวบ้าน');
+        const savedGroupId = Number(localStorage.getItem('selectedGroupId')) || 1;
+        const savedGroupName = localStorage.getItem('selectedGroupName') || 'ชาวบ้าน';
+        selectCustomerGroup(savedGroupId, savedGroupName);
     });
 
     async function fetchLatestFoods() {
@@ -479,6 +480,7 @@
 
     // ฟังก์ชันคำนวณราคาฐาน (รองรับราคาพิเศษ)
     function getGroupBasePrice(item, groupId) {
+        // หากมีราคาพิเศษถูกระบุมา ให้ใช้ราคาพิเศษก่อนเสมอ
         if (item.is_custom_price && Number(item.custom_price) > 0) {
             return Number(item.custom_price);
         }

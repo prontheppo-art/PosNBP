@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <title>ดูแลและแก้ไขตารางราคา - ลาบหนองบัวลำภู</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            font-family: sans-serif; 
+            background: #f3f4f6; 
+            touch-action: pan-y; 
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .app-layout {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100dvh;
+            width: 100vw;
+            box-sizing: border-box;
+            padding: 8px;
+            overflow: hidden;
+        }
+
+        /* สไตล์แถบปุ่มหมวดหมู่: พอดีช่อง ไม่ต้อง Scroll ขยายอัตโนมัติตามรายการ */
+        .category-nav-wrap {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr)); /* วาง 2 คอลัมน์สมบูรณ์แบบ */
+            gap: 0.35rem;
+            padding: 0.25rem 0.1rem;
+            width: 100%;
+            /* เอา max-height และ overflow ออก เพื่อไม่ให้เกิด scrollbar */
+        }
+
+        .cat-nav-btn {
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            color: #1e293b;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.45rem 0.3rem;
+            border-radius: 0.6rem;
+            text-align: center;
+            white-space: nowrap;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            cursor: pointer;
+            min-height: 38px;
+        }
+
+        .cat-nav-btn:active, .cat-nav-btn.active {
+            background-color: #10b981;
+            color: #ffffff;
+            border-color: #10b981;
+            transform: scale(0.97);
+        }
+
+        .cat-nav-btn.btn-all {
+            grid-column: span 2 / span 2; /* ปุ่มแสดงทั้งหมดพาดยาวเต็ม 2 คอลัมน์ */
+        }
+
+        .cat-nav-btn.btn-all.active {
+            background-color: #ef4444;
+            color: #ffffff;
+            border-color: #ef4444;
+        }
+
+        .cat-nav-icon {
+            font-size: 0.95rem;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .category-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border: 2px solid #334155;
+            border-radius: 1.25rem;
+            overflow: hidden;
+            background: #ffffff;
+            margin-bottom: 2px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            scroll-margin-top: 10px;
+        }
+
+        .card-body-scroll {
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .sticky-th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="app-layout">
+        <div class="w-[97%] max-w-xl bg-white rounded-3xl shadow-xl p-4 sm:p-6 h-[92vh] flex flex-col relative overflow-hidden">
+            
+            <!-- ส่วนหัวหลักด้านบนสุด -->
+            <div class="shrink-0 bg-white pb-2 relative z-20">
+                <h2 class="text-xl font-bold text-gray-800 text-center mb-2">🏷️ ดูแลและแก้ไขตารางราคา</h2>
+                
+                <!-- แถบปุ่มกดเลือกหมวดหมู่ ปรับขนาดอัตโนมัติ พอดีช่อง ไม่ต้อง Scroll -->
+                <div id="quickNavContainer" class="category-nav-wrap border border-slate-200 p-1.5 rounded-2xl bg-slate-50">
+                    <div class="text-center col-span-2 text-xs text-slate-400 py-2">⏳ กำลังโหลดหมวดหมู่...</div>
+                </div>
+            </div>
+
+            <hr class="border-gray-100 my-1 shrink-0">
+
+            <!-- ส่วนตารางหลัก (จะย่อ-ขยายพื้นที่ตามปุ่มด้านบนโดยอัตโนมัติ) -->
+            <div id="tablesContainer" class="space-y-4 flex-1 min-h-0 flex flex-col pr-1 pb-1 overflow-y-auto relative z-0" style="-webkit-overflow-scrolling: touch; scroll-behavior: smooth;">
+                <div class="text-center text-gray-400 text-xs py-8">⏳ กำลังโหลดข้อมูลเมนูและราคา...</div>
+            </div>
+
+            <!-- แถบปุ่มกดด้านล่าง -->
+            <div class="shrink-0 pt-2 border-t border-gray-100 grid grid-cols-2 gap-2 z-20 bg-white">
+                <a href="AddFoodGroup.html" 
+                   class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-2 rounded-2xl text-xs flex items-center justify-center gap-1 shadow-sm no-underline text-center">
+                    ➕ กลุ่มอาหาร
+                </a>
+                <a href="PageAdmin.html" 
+                   class="bg-slate-700 hover:bg-slate-800 text-white font-bold py-2.5 px-2 rounded-2xl text-xs flex items-center justify-center gap-1 shadow-sm no-underline text-center">
+                    🔑 ผู้ดูแล
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ดึงไฟล์คีย์ Supabase และไฟล์ Pop-up ปุ่มกดกลุ่มอาหารมาใช้งาน -->
+    <script src="key.js"></script>
+    <script src="FoodGroupPopup.js"></script>
+
+    <script>
+        document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+        document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
+        document.addEventListener('gestureend', function (e) { e.preventDefault(); }, { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+
+        document.addEventListener('touchstart', function (event) {
+            if (event.touches.length > 1) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+
+        let db;
+        let menus = [];
+        let foodGroups = []; 
+        let currentSelectedCategory = 'all';
+        const categoryIcons = ['🍱', '🍲', '🍳', '🍚', '🥩', '⭐', '🥗', '🛍️', '🍽️', '🥢', '🍹'];
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (typeof window.supabaseClient !== 'undefined') {
+                db = window.supabaseClient;
+            } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
+                db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+
+            if (db) {
+                await loadAllData();
+            } else {
+                document.getElementById('tablesContainer').innerHTML = `<div class="text-center text-red-500 text-xs py-8">❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ (โปรดตรวจสอบ key.js)</div>`;
+            }
+        });
+
+        async function loadAllData() {
+            try {
+                const [ { data: mData }, { data: fgData } ] = await Promise.all([
+                    db.from('foods').select('*'),
+                    db.from('food_groups').select('*').order('name', { ascending: true })
+                ]);
+
+                menus = mData || [];
+                foodGroups = fgData || [];
+
+                if (foodGroups.length === 0 && menus.length > 0) {
+                    const uniqueCats = [...new Set(menus.map(m => m.group_id).filter(Boolean))];
+                    foodGroups = uniqueCats.map((cat) => ({ id: cat, name: `กลุ่ม ${cat}` }));
+                }
+
+                renderQuickNav();
+                renderMenuTables();
+            } catch (err) {
+                console.error("Error loading price editor data:", err);
+                document.getElementById('tablesContainer').innerHTML = `<div class="text-center text-red-500 text-xs py-8">เกิดข้อผิดพลาดในการโหลดข้อมูล: ${err.message}</div>`;
+            }
+        }
+
+        // แสดงแถบปุ่มเลือกหมวดหมู่ 2 คอลัมน์ แบบปรับขนาดอัตโนมัติ
+        function renderQuickNav() {
+            const navContainer = document.getElementById('quickNavContainer');
+            if (!navContainer) return;
+            navContainer.innerHTML = '';
+
+            // ปุ่ม "แสดงทุกหมวดหมู่"
+            const allBtn = document.createElement('button');
+            allBtn.type = 'button';
+            allBtn.className = `cat-nav-btn btn-all ${currentSelectedCategory === 'all' ? 'active' : ''}`;
+            allBtn.innerHTML = `<span class="cat-nav-icon">🌐</span> <span>-- แสดงทุกหมวดหมู่ --</span>`;
+            allBtn.onclick = () => selectCategory('all');
+            navContainer.appendChild(allBtn);
+
+            // ปุ่มหมวดหมู่อื่นๆ วางแบบกริต 2 คอลัมน์ลงมาเรื่อยๆ
+            foodGroups.forEach((cat, index) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                const isSelected = String(currentSelectedCategory) === String(cat.id);
+                btn.className = `cat-nav-btn ${isSelected ? 'active' : ''}`;
+                
+                const icon = categoryIcons[index % categoryIcons.length];
+                btn.innerHTML = `<span class="cat-nav-icon">${icon}</span> <span class="truncate">${cat.name}</span>`;
+                btn.onclick = () => selectCategory(cat.id);
+                navContainer.appendChild(btn);
+            });
+        }
+
+        function selectCategory(catId) {
+            currentSelectedCategory = catId;
+            renderQuickNav();
+            renderMenuTables();
+
+            if (catId !== 'all') {
+                setTimeout(() => {
+                    const targetElement = document.getElementById(`category-card-${catId}`);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 50);
+            }
+        }
+
+        // เรียก Pop-up เมื่อแตะชื่อเมนู เพื่อย้ายกลุ่มอาหาร
+        function openChangeCategoryModal(foodId) {
+            const foodItem = menus.find(m => String(m.id) === String(foodId));
+            if (!foodItem) return;
+
+            FoodGroupPopup.open({
+                title: '📂 ย้ายกลุ่มหมวดหมู่',
+                subtitle: `รายการอาหาร: <b class="text-blue-600 font-bold">${foodItem.name}</b>`,
+                categories: foodGroups,
+                selectedId: foodItem.group_id,
+                includeAllOption: false,
+                onSelect: async (selected) => {
+                    if (String(foodItem.group_id) === String(selected.id)) return;
+
+                    try {
+                        const { error } = await db.from('foods')
+                            .update({ group_id: parseInt(selected.id) || selected.id })
+                            .eq('id', parseInt(foodId));
+
+                        if (error) {
+                            alert('เกิดข้อผิดพลาดในการย้ายหมวดหมู่: ' + error.message);
+                        } else {
+                            foodItem.group_id = selected.id;
+                            renderMenuTables();
+                        }
+                    } catch (err) {
+                        console.error("Exception on saveNewCategory:", err);
+                        alert("เกิดข้อผิดพลาด: " + err.message);
+                    }
+                }
+            });
+        }
+
+        function renderMenuTables() {
+            const container = document.getElementById('tablesContainer');
+            container.innerHTML = '';
+
+            let targetCategories = [];
+            if (currentSelectedCategory === 'all') {
+                targetCategories = foodGroups;
+            } else {
+                targetCategories = foodGroups.filter(cat => String(cat.id) === String(currentSelectedCategory));
+            }
+
+            let allTablesHtml = '';
+
+            targetCategories.forEach(currentCat => {
+                const catMenus = menus
+                    .filter(m => String(m.group_id) === String(currentCat.id))
+                    .sort((a, b) => {
+                        const nameA = (a.name || '').trim();
+                        const nameB = (b.name || '').trim();
+                        return nameA.localeCompare(nameB, 'th', { sensitivity: 'base', numeric: true });
+                    });
+
+                let rowsHtml = '';
+                if (catMenus.length > 0) {
+                    catMenus.forEach((m, index) => {
+                        const borderClass = index === catMenus.length - 1 ? 'bg-white' : 'border-b border-gray-200 bg-white';
+
+                        rowsHtml += `
+                            <tr class="${borderClass}">
+                                <td onclick="openChangeCategoryModal('${m.id}')" 
+                                    class="p-2 font-bold text-gray-800 text-left pl-2.5 text-xs cursor-pointer hover:bg-blue-50 active:bg-blue-100 transition rounded-lg" style="width: 49%;" title="แตะเพื่อย้ายกลุ่มอาหาร">
+                                    <span class="hover:underline flex items-center gap-1">
+                                        ${m.name}
+                                        <span class="text-[10px] text-gray-400 font-normal">✏️</span>
+                                    </span>
+                                </td>
+                                <td class="p-1 text-center" style="width: 17%;">
+                                    <input type="number" value="${m.price_1 || 0}" 
+                                           onfocus="this.select()"
+                                           onblur="updatePriceDirect('${m.id}', 'price_1', this.value)"
+                                           class="w-full max-w-[50px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
+                                </td>
+                                <td class="p-1 text-center" style="width: 17%;">
+                                    <input type="number" value="${m.price_2 || 0}" 
+                                           onfocus="this.select()"
+                                           onblur="updatePriceDirect('${m.id}', 'price_2', this.value)"
+                                           class="w-full max-w-[50px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
+                                </td>
+                                <td class="p-1 text-center pr-2" style="width: 17%;">
+                                    <input type="number" value="${m.price_3 || 0}" 
+                                           onfocus="this.select()"
+                                           onblur="updatePriceDirect('${m.id}', 'price_3', this.value)"
+                                           class="w-full max-w-[50px] border border-gray-300 rounded-lg py-1.5 px-0.5 text-center font-bold text-gray-700 outline-none focus:border-blue-500 text-xs bg-white">
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    rowsHtml = `
+                        <tr>
+                            <td colspan="4" class="text-center text-gray-400 text-xs py-6">ยังไม่มีรายการอาหารในหมวดนี้</td>
+                        </tr>
+                    `;
+                }
+
+                allTablesHtml += `
+                    <div class="category-card" id="category-card-${currentCat.id}">
+                        <div class="bg-slate-700 text-white font-bold py-2 px-3 text-xs flex items-center justify-between shrink-0 z-20">
+                            <span class="truncate flex items-center gap-1.5">📁 ${currentCat.name}</span>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <a href="AddMenu.html?groupId=${currentCat.id}" 
+                                   class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs transition shadow-xs flex items-center gap-1 no-underline">
+                                    ➕ เมนู
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body-scroll">
+                            <table class="w-full text-xs border-collapse table-fixed">
+                                <thead>
+                                    <tr class="bg-blue-500 text-white font-bold sticky-th">
+                                        <th class="p-2 text-left pl-2.5 bg-blue-500 text-[11px]" style="width: 49%;">รายการอาหาร</th>
+                                        <th class="p-2 text-center bg-blue-500 text-[11px]" style="width: 17%;">ชาวบ้าน</th>
+                                        <th class="p-2 text-center bg-blue-500 text-[11px]" style="width: 17%;">นักท่องเที่ยว</th>
+                                        <th class="p-2 text-center bg-blue-500 text-[11px] pr-2" style="width: 17%;">สบายดี</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rowsHtml}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (!allTablesHtml) {
+                container.innerHTML = `<div class="text-center text-gray-400 text-xs py-8">ไม่พบข้อมูลหมวดหมู่ที่เลือก</div>`;
+                return;
+            }
+
+            container.innerHTML = allTablesHtml;
+        }
+
+        async function updatePriceDirect(foodId, priceColumn, newPrice) {
+            const parsedPrice = newPrice === '' ? 0 : parseFloat(newPrice);
+            
+            const item = menus.find(m => String(m.id) === String(foodId));
+            if (item) {
+                item[priceColumn] = parsedPrice;
+            }
+
+            try {
+                const updateData = {};
+                updateData[priceColumn] = parsedPrice;
+
+                const { error } = await db.from('foods')
+                    .update(updateData)
+                    .eq('id', parseInt(foodId));
+
+                if (error) {
+                    console.error(`❌ บันทึก ${priceColumn} ไม่สำเร็จ:`, error.message);
+                    alert(`เกิดข้อผิดพลาดในการบันทึก: ${error.message}`);
+                }
+            } catch (err) {
+                console.error("Exception on updatePriceDirect:", err);
+            }
+        }
+    </script>
+</body>
+</html>

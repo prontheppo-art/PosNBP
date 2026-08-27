@@ -30,103 +30,75 @@
             -webkit-user-select: none; 
         }
 
-        .fixed-cart-header { 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            right: 0; 
-            z-index: 50; 
-            background-color: var(--bg-color); 
-            padding: 0.5rem 0.75rem 0.25rem 0.75rem; 
-        }
-
+        /* ตารางกริดหมวดหมู่อาหารแบบ 2 คอลัมน์ */
         .category-nav-wrap {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.35rem;
-            padding: 0.25rem 0.1rem;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.5rem;
+            padding: 0.5rem 0.1rem;
+            width: 100%;
         }
         
         .cat-nav-btn {
+            position: relative; /* สำหรับวาง Badge มุมขวาบน */
             background-color: #ffffff;
-            border: 1px solid #cbd5e1;
+            border: 1.5px solid #cbd5e1;
             color: #1e293b;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             font-weight: 700;
-            padding: 0.4rem 0.7rem;
-            border-radius: 0.6rem;
+            padding: 0.75rem 0.5rem;
+            border-radius: 0.85rem;
             text-align: center;
             white-space: nowrap;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             transition: all 0.15s ease;
-            flex-grow: 1;
-            display: inline-flex;
+            display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.25rem;
+            gap: 0.35rem;
+            min-height: 52px;
+            cursor: pointer;
         }
+
         .cat-nav-btn:active {
             background-color: #10b981;
             color: #ffffff;
             border-color: #10b981;
-            transform: scale(0.95);
+            transform: scale(0.96);
         }
+
         .cat-nav-icon {
-            font-size: 1.05rem;
+            font-size: 1.25rem;
             display: inline-block;
         }
 
-        .scrollable-content {
+        /* Badge ตัวเลขรวมประจำหมวดหมู่ในหน้าหลัก */
+        .cat-badge-main {
             position: absolute;
-            top: 10rem;
-            bottom: 4.5rem;
-            left: 0;
-            right: 0;
-            overflow-y: auto;
-            padding: 0.5rem 0.75rem 1rem 0.75rem;
-            touch-action: pan-y;
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
+            top: -0.35rem;
+            right: -0.35rem;
+            background-color: #ef4444;
+            color: #ffffff;
+            font-size: 0.7rem;
+            font-weight: 800;
+            width: 1.35rem;
+            height: 1.35rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         }
 
-        /* กรอบกลุ่มอาหาร (เส้นขอบสีแดง) */
-        .category-card { 
-            background: #ffffff; 
-            border-radius: 1.25rem; 
-            padding: 0.85rem; 
-            margin-bottom: 1rem; 
-            border: 1.5px solid #ef4444; 
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); 
-        }
-
-        /* ส่วนหัวข้อหมวดหมู่: ปรับสีข้อความชื่อหมวดหมู่เป็นสีแดง (color: #dc2626) */
-        .category-header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 0.5rem 0.75rem; 
-            margin-bottom: 0.75rem; 
-            background-color: #f0fdf4;
-            border: 1.5px solid #2563eb;
-            border-radius: 0.75rem;
-            font-weight: 800; 
-            font-size: 1rem; 
-            color: #dc2626; 
-        }
-        .btn-clear-category { background-color: #ffffff; color: #64748b; font-size: 0.75rem; font-weight: 700; padding: 0.3rem 0.65rem; border-radius: 0.5rem; border: 1px solid #cbd5e1; cursor: pointer; }
-        .btn-clear-category-active { background-color: #fee2e2; color: #b91c1c; font-size: 0.75rem; font-weight: 700; padding: 0.3rem 0.65rem; border-radius: 0.5rem; border: 1px solid #fca5a5; cursor: pointer; }
-        .btn-add-item { background-color: #22c55e; color: #ffffff; font-size: 0.75rem; font-weight: 700; padding: 0.3rem 0.65rem; border-radius: 0.5rem; border: none; cursor: pointer; }
-        
-        .menu-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
-
-        /* กรอบรายการอาหาร (เส้นขอบสีเขียว) */
+        /* ปุ่มรายการอาหารใน Pop-up */
         .menu-item-btn { 
             position: relative; 
             background-color: #f8fafc; 
             border: 1.5px solid #22c55e; 
             border-radius: 0.65rem; 
             padding: 0.4rem 0.25rem; 
-            font-size: 0.975rem; 
+            font-size: 0.85rem; 
             font-weight: 700; 
             color: #334155; 
             text-align: center; 
@@ -139,6 +111,7 @@
             min-height: 48px; 
             line-height: 1.25;
         }
+
         .menu-item-btn:active { transform: scale(0.97); }
         .menu-item-btn.selected { background-color: #f0fdf4; border-color: #16a34a; color: #15803d; }
         .cart-badge { position: absolute; top: -0.35rem; right: -0.35rem; background-color: #ef4444; color: #ffffff; font-size: 0.65rem; font-weight: 800; width: 1.25rem; height: 1.25rem; border-radius: 9999px; display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff; }
@@ -150,459 +123,441 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased">
 
-<div class="fixed-cart-header" id="fixedHeader">
-    <div class="max-w-2xl mx-auto space-y-1.5">
-        <div class="bg-white p-2.5 px-3.5 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
-            <span class="font-bold text-xs text-slate-700">🛒 ตะกร้าสินค้าปัจจุบัน:</span>
-            <span class="text-emerald-600 font-extrabold text-sm" id="cartCountText">0 รายการ | 0 ชิ้น</span>
-        </div>
-        <div id="quickNavContainer" class="category-nav-wrap"></div>
-    </div>
-</div>
+    <!-- พื้นที่แสดงหลัก -->
+    <div class="max-w-xl mx-auto p-3 flex flex-col h-full justify-between pb-16">
+        
+        <div class="space-y-3">
+            <!-- แถบแสดงจำนวนตระกร้าปัจจุบัน -->
+            <div class="bg-white p-3 px-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+                <span class="font-bold text-xs text-slate-700">🛒 ตะกร้าสินค้าปัจจุบัน:</span>
+                <span class="text-emerald-600 font-extrabold text-sm" id="cartCountText">0 รายการ | 0 ชิ้น</span>
+            </div>
 
-<div class="scrollable-content" id="scrollContainer">
-    <div id="mainCategoryContainer" class="max-w-2xl mx-auto space-y-4">
-        <div class="text-center py-10 text-slate-400 font-bold text-xs">⏳ กำลังโหลดรายการอาหาร...</div>
-    </div>
-</div>
-
-<div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2.5 shadow-lg z-40">
-    <div class="max-w-2xl mx-auto flex gap-2">
-        <button type="button" onclick="window.location.href='index.html'" class="bg-white text-slate-700 border border-slate-300 font-bold py-2.5 px-2 rounded-2xl text-xs flex-1 shadow active:scale-95 transition whitespace-nowrap">🏠 หน้าหลัก</button>
-        <button type="button" onclick="clearAllCart()" class="bg-rose-50 text-rose-600 border border-rose-200 font-bold py-2.5 px-2 rounded-2xl text-xs flex-1 shadow active:scale-95 transition whitespace-nowrap">🗑️ ยกเลิก</button>
-        <button type="button" onclick="goToSummary()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-2 rounded-2xl text-xs flex-1 shadow active:scale-95 transition whitespace-nowrap">🔍 ตรวจสอบ</button>
-    </div>
-</div>
-
-<div id="orderModalOverlay" class="custom-modal-overlay">
-    <div class="custom-modal-box relative border-t-0 p-5 rounded-3xl">
-        <div class="flex justify-between items-center mb-4">
-            <h3 id="modalFoodName" class="text-base font-extrabold text-slate-800">ชื่ออาหาร</h3>
-            <button type="button" onclick="closeOrderModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1 leading-none">&times;</button>
+            <!-- กล่องรวมปุ่มหมวดหมู่อาหาร -->
+            <div id="quickNavContainer" class="category-nav-wrap">
+                <div class="col-span-2 text-center py-8 text-slate-400 font-bold text-xs">⏳ กำลังโหลดหมวดหมู่...</div>
+            </div>
         </div>
 
-        <div class="border border-slate-300 rounded-2xl p-3 bg-white space-y-3">
-            <div class="flex items-center justify-between">
-                <span class="text-sm font-bold text-slate-700">จำนวน</span>
-                <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-sm">
-                    <button type="button" onclick="adjustModalQty(-1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-r border-slate-300 active:bg-slate-300">-</button>
-                    <span id="modalQtyVal" class="font-extrabold text-sm text-slate-800 px-3 min-w-[2.2rem] text-center">1</span>
-                    <button type="button" onclick="adjustModalQty(1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-l border-slate-300 active:bg-slate-300">+</button>
+    </div>
+
+    <!-- แถบปุ่มกดด้านล่างสุด -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2.5 shadow-lg z-40">
+        <div class="max-w-xl mx-auto flex gap-2">
+            <button type="button" onclick="window.location.href='index.html'" class="bg-white text-slate-700 border border-slate-300 font-bold py-2.5 px-2 rounded-2xl text-xs flex-1 shadow active:scale-95 transition whitespace-nowrap">🏠 หน้าหลัก</button>
+            <button type="button" onclick="clearAllCart()" class="bg-rose-50 text-rose-600 border border-rose-200 font-bold py-2.5 px-2 rounded-2xl text-xs flex-1 shadow active:scale-95 transition whitespace-nowrap">🗑️ ยกเลิก</button>
+            <button type="button" onclick="goToSummary()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-2 rounded-2xl text-xs flex-1 shadow active:scale-95 transition whitespace-nowrap">🔍 ตรวจสอบ</button>
+        </div>
+    </div>
+
+    <!-- Modal เลือกจำนวน / ไข่ดาว / ไข่เจียว / รายละเอียดเพิ่มเติม -->
+    <div id="orderModalOverlay" class="custom-modal-overlay">
+        <div class="custom-modal-box relative border-t-0 p-5 rounded-3xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalFoodName" class="text-base font-extrabold text-slate-800">ชื่ออาหาร</h3>
+                <button type="button" onclick="closeOrderModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1 leading-none">&times;</button>
+            </div>
+
+            <div class="border border-slate-300 rounded-2xl p-3 bg-white space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-bold text-slate-700">จำนวน</span>
+                    <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-sm">
+                        <button type="button" onclick="adjustModalQty(-1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-r border-slate-300 active:bg-slate-300">-</button>
+                        <span id="modalQtyVal" class="font-extrabold text-sm text-slate-800 px-3 min-w-[2.2rem] text-center">1</span>
+                        <button type="button" onclick="adjustModalQty(1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-l border-slate-300 active:bg-slate-300">+</button>
+                    </div>
+                </div>
+
+                <div id="toppingEggContainer" class="flex items-center justify-between border-t border-slate-100 pt-2">
+                    <span class="text-sm font-bold text-slate-700">ไข่ดาว</span>
+                    <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-sm">
+                        <button type="button" onclick="adjustTopping('fried_egg', -1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-r border-slate-300 active:bg-slate-300">-</button>
+                        <span id="modalEggVal" class="font-extrabold text-sm text-slate-800 px-3 min-w-[2.2rem] text-center">0</span>
+                        <button type="button" onclick="adjustTopping('fried_egg', 1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-l border-slate-300 active:bg-slate-300">+</button>
+                    </div>
+                </div>
+
+                <div id="toppingOmeletContainer" class="flex items-center justify-between border-t border-slate-100 pt-2">
+                    <span class="text-sm font-bold text-slate-700">ไข่เจียว</span>
+                    <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-sm">
+                        <button type="button" onclick="adjustTopping('omelet', -1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-r border-slate-300 active:bg-slate-300">-</button>
+                        <span id="modalOmeletVal" class="font-extrabold text-sm text-slate-800 px-3 min-w-[2.2rem] text-center">0</span>
+                        <button type="button" onclick="adjustTopping('omelet', 1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-l border-slate-300 active:bg-slate-300">+</button>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-2 flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold text-amber-600 whitespace-nowrap">ราคาพิเศษ:</span>
+                    <input type="number" id="modalCustomPriceInput" placeholder="ระบุราคาพิเศษ" class="w-full text-xs p-2 border border-amber-300 rounded-xl bg-amber-50/40 focus:outline-none focus:border-amber-500 focus:bg-white placeholder:text-amber-400 font-bold text-amber-700 text-right">
+                </div>
+
+                <div class="border-t border-slate-100 pt-2">
+                    <input type="text" id="modalNoteInput" placeholder="( รายละเอียดเพิ่มเติม NOTE )" class="w-full text-xs p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-emerald-500 focus:bg-white placeholder:text-slate-400">
                 </div>
             </div>
 
-            <div id="toppingEggContainer" class="flex items-center justify-between border-t border-slate-100 pt-2">
-                <span class="text-sm font-bold text-slate-700">ไข่ดาว</span>
-                <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-sm">
-                    <button type="button" onclick="adjustTopping('fried_egg', -1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-r border-slate-300 active:bg-slate-300">-</button>
-                    <span id="modalEggVal" class="font-extrabold text-sm text-slate-800 px-3 min-w-[2.2rem] text-center">0</span>
-                    <button type="button" onclick="adjustTopping('fried_egg', 1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-l border-slate-300 active:bg-slate-300">+</button>
-                </div>
+            <div class="mt-4">
+                <button type="button" onclick="saveOrderFromModal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-1">
+                    ✓ บันทึกรายการ
+                </button>
             </div>
-
-            <div id="toppingOmeletContainer" class="flex items-center justify-between border-t border-slate-100 pt-2">
-                <span class="text-sm font-bold text-slate-700">ไข่เจียว</span>
-                <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-sm">
-                    <button type="button" onclick="adjustTopping('omelet', -1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-r border-slate-300 active:bg-slate-300">-</button>
-                    <span id="modalOmeletVal" class="font-extrabold text-sm text-slate-800 px-3 min-w-[2.2rem] text-center">0</span>
-                    <button type="button" onclick="adjustTopping('omelet', 1)" class="w-9 h-8 bg-slate-50 text-slate-700 font-bold text-sm flex items-center justify-center hover:bg-slate-200 border-l border-slate-300 active:bg-slate-300">+</button>
-                </div>
-            </div>
-
-            <div class="border-t border-slate-100 pt-2 flex items-center justify-between gap-2">
-                <span class="text-xs font-bold text-amber-600 whitespace-nowrap">ราคาพิเศษ:</span>
-                <input type="number" id="modalCustomPriceInput" placeholder="ระบุราคาพิเศษ" class="w-full text-xs p-2 border border-amber-300 rounded-xl bg-amber-50/40 focus:outline-none focus:border-amber-500 focus:bg-white placeholder:text-amber-400 font-bold text-amber-700 text-right">
-            </div>
-
-            <div class="border-t border-slate-100 pt-2">
-                <input type="text" id="modalNoteInput" placeholder="( รายละเอียดเพิ่มเติม NOTE )" class="w-full text-xs p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-emerald-500 focus:bg-white placeholder:text-slate-400">
-            </div>
-        </div>
-
-        <div class="mt-4">
-            <button type="button" onclick="saveOrderFromModal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-1">
-                ✓ บันทึกรายการ
-            </button>
         </div>
     </div>
-</div>
 
-<div id="addMenuModalOverlay" class="custom-modal-overlay">
-    <div class="custom-modal-box">
-        <h3 id="addMenuCategoryTitle" class="text-sm font-extrabold text-slate-800 mb-3 border-b pb-2">เพิ่มเมนูใหม่</h3>
-        <form id="addMenuForm" onsubmit="handleAddNewMenu(event)" class="space-y-3">
-            <input type="hidden" id="addMenuCatId">
-            <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1">ชื่อเมนูอาหาร *</label>
-                <input type="text" id="addMenuName" required placeholder="ระบุชื่อเมนู" class="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500">
-            </div>
-            <div class="grid grid-cols-3 gap-2">
+    <!-- Modal เพิ่มเมนูใหม่ -->
+    <div id="addMenuModalOverlay" class="custom-modal-overlay">
+        <div class="custom-modal-box">
+            <h3 id="addMenuCategoryTitle" class="text-sm font-extrabold text-slate-800 mb-3 border-b pb-2">เพิ่มเมนูใหม่</h3>
+            <form id="addMenuForm" onsubmit="handleAddNewMenu(event)" class="space-y-3">
+                <input type="hidden" id="addMenuCatId">
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-1">ชาวบ้าน (P1)</label>
-                    <input type="number" id="addMenuPrice1" placeholder="0" class="w-full text-xs p-2 border border-slate-200 rounded-lg">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">ชื่อเมนูอาหาร *</label>
+                    <input type="text" id="addMenuName" required placeholder="ระบุชื่อเมนู" class="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500">
                 </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-1">นักเที่ยว (P2)</label>
-                    <input type="number" id="addMenuPrice2" placeholder="0" class="w-full text-xs p-2 border border-slate-200 rounded-lg">
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1">ชาวบ้าน (P1)</label>
+                        <input type="number" id="addMenuPrice1" placeholder="0" class="w-full text-xs p-2 border border-slate-200 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1">นักเที่ยว (P2)</label>
+                        <input type="number" id="addMenuPrice2" placeholder="0" class="w-full text-xs p-2 border border-slate-200 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1">สบายดี (P3)</label>
+                        <input type="number" id="addMenuPrice3" placeholder="0" class="w-full text-xs p-2 border border-slate-200 rounded-lg">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-1">สบายดี (P3)</label>
-                    <input type="number" id="addMenuPrice3" placeholder="0" class="w-full text-xs p-2 border border-slate-200 rounded-lg">
+                <div class="flex gap-2 mt-4">
+                    <button type="button" onclick="closeAddMenuModal()" class="flex-1 py-2.5 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl border border-slate-200">ยกเลิก</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow">บันทึกเมนู</button>
                 </div>
-            </div>
-            <div class="flex gap-2 mt-4">
-                <button type="button" onclick="closeAddMenuModal()" class="flex-1 py-2.5 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl border border-slate-200">ยกเลิก</button>
-                <button type="submit" class="flex-1 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow">บันทึกเมนู</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div id="confirmClearModalOverlay" class="custom-modal-overlay">
-    <div class="custom-modal-box text-center">
-        <div class="w-12 h-12 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-bold">🗑️</div>
-        <h3 class="text-sm font-extrabold text-slate-800 mb-1">ยืนยันการล้างตะกร้า?</h3>
-        <p class="text-xs text-slate-500 mb-4">รายการอาหารทั้งหมดในตะกร้าจะถูกยกเลิก</p>
-        <div class="flex gap-2">
-            <button type="button" onclick="closeConfirmClearModal()" class="flex-1 py-2.5 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl border border-slate-200">ยกเลิก</button>
-            <button type="button" onclick="executeClearAllCart()" class="flex-1 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl shadow">ยืนยันการลบ</button>
+            </form>
         </div>
     </div>
-</div>
 
-<script src="key.js"></script>
-<script>
-    let db;
-    const BOX_MEAL_GROUP_IDS = [1];
+    <!-- Modal ยืนยันการล้างตะกร้า -->
+    <div id="confirmClearModalOverlay" class="custom-modal-overlay">
+        <div class="custom-modal-box text-center">
+            <div class="w-12 h-12 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-bold">🗑️</div>
+            <h3 class="text-sm font-extrabold text-slate-800 mb-1">ยืนยันการล้างตะกร้า?</h3>
+            <p class="text-xs text-slate-500 mb-4">รายการอาหารทั้งหมดในตะกร้าจะถูกยกเลิก</p>
+            <div class="flex gap-2">
+                <button type="button" onclick="closeConfirmClearModal()" class="flex-1 py-2.5 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl border border-slate-200">ยกเลิก</button>
+                <button type="button" onclick="executeClearAllCart()" class="flex-1 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl shadow">ยืนยันการลบ</button>
+            </div>
+        </div>
+    </div>
 
-    let categories = []; 
-    let foods = []; 
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
-    let currentFoodItem = null;
-    let currentModalData = { qty: 1, fried_egg: 0, omelet: 0, note: '' };
+    <!-- ดึงไฟล์ JS และ Pop-up หมวดหมู่มาใช้งาน -->
+    <script src="key.js"></script>
+    <script src="CategoryFoodPopup.js"></script>
+    <script>
+        let db;
+        const BOX_MEAL_GROUP_IDS = [1];
 
-    const categoryIcons = ['🍱', '🍲', '🍳', '🍚', '🥩', '⭐', '🥗', '🛍️', '🍽️'];
+        let categories = []; 
+        let foods = []; 
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        let currentFoodItem = null;
+        let currentModalData = { qty: 1, fried_egg: 0, omelet: 0, note: '' };
 
-    document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+        const categoryIcons = ['🍱', '🍲', '🍳', '🍚', '🥩', '⭐', '🥗', '🛍️', '🍽️'];
 
-    function initDatabase() {
-        if (typeof supabaseClient !== 'undefined') {
-            db = supabaseClient;
-        } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
-            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        }
-    }
+        document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
 
-    window.addEventListener('DOMContentLoaded', async () => {
-        initDatabase();
-        updateCartUI();
-        await loadData();
-    });
-
-    async function loadData() {
-        const container = document.getElementById('mainCategoryContainer');
-        if (!db) {
-            container.innerHTML = '<div class="text-center py-10 text-rose-500 font-bold text-xs">❌ ไม่พบการเชื่อมต่อ Supabase (โปรดตรวจสอบ key.js)</div>';
-            return;
-        }
-
-        try {
-            const [catRes, foodRes] = await Promise.all([
-                db.from('food_groups').select('*').order('id', { ascending: true }),
-                db.from('foods').select('*').order('id', { ascending: true })
-            ]);
-
-            if (catRes.error) throw catRes.error;
-            if (foodRes.error) throw foodRes.error;
-            
-            categories = (catRes.data || []).sort((a, b) => Number(a.id) - Number(b.id)); 
-            foods = foodRes.data || [];
-
-            renderQuickNav();
-            renderCategoryGrid();
-            adjustContentPadding();
-        } catch (err) { 
-            console.error('Error loading data:', err); 
-            container.innerHTML = `<div class="text-center py-10 text-rose-500 font-bold text-xs">❌ เกิดข้อผิดพลาด: ${err.message || 'ไม่สามารถดึงข้อมูลได้'}</div>`;
-        }
-    }
-
-    function renderQuickNav() {
-        const navContainer = document.getElementById('quickNavContainer');
-        if (!navContainer) return;
-        navContainer.innerHTML = '';
-
-        categories.forEach((cat, index) => {
-            const btn = document.createElement('button');
-            btn.className = 'cat-nav-btn';
-            
-            const icon = categoryIcons[index % categoryIcons.length];
-            btn.innerHTML = `<span class="cat-nav-icon">${icon}</span> <span>${cat.name}</span>`;
-            
-            btn.onclick = () => scrollToCategory(cat.id);
-            navContainer.appendChild(btn);
-        });
-    }
-
-    function adjustContentPadding() {
-        setTimeout(() => {
-            const header = document.getElementById('fixedHeader');
-            const content = document.getElementById('scrollContainer');
-            if (header && content) {
-                const headerHeight = header.offsetHeight;
-                content.style.top = `${headerHeight + 5}px`;
+        function initDatabase() {
+            if (typeof supabaseClient !== 'undefined') {
+                db = supabaseClient;
+            } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
+                db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             }
-        }, 50);
-    }
-
-    function scrollToCategory(catId) {
-        const targetElement = document.getElementById(`category-group-${catId}`);
-        if (targetElement) {
-            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-    }
 
-    function updateCartUI() {
-        cart = JSON.parse(localStorage.getItem('cart')) || [];
-        const totalItems = cart.length;
-        const totalQty = cart.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
-        document.getElementById('cartCountText').textContent = `${totalItems} รายการ | ${totalQty} ชิ้น`;
-    }
-
-    function renderCategoryGrid() {
-        cart = JSON.parse(localStorage.getItem('cart')) || [];
-        const container = document.getElementById('mainCategoryContainer');
-        if (!container) return;
-        container.innerHTML = '';
-
-        if (categories.length === 0) {
-            container.innerHTML = '<div class="text-center py-10 text-slate-400 font-bold text-xs">ไม่พบหมวดหมู่อาหาร</div>';
-            return;
-        }
-        
-        categories.forEach((cat, index) => {
-            const catFoodIds = foods
-                .filter(f => Number(f.group_id) === Number(cat.id))
-                .map(f => String(f.id));
-
-            const hasItems = cart.some(item => catFoodIds.includes(String(item.food_id)));
-            const icon = categoryIcons[index % categoryIcons.length];
-
-            const card = document.createElement('div'); 
-            card.className = 'category-card';
-            card.id = `category-group-${cat.id}`;
-            
-            const header = document.createElement('div'); 
-            header.className = 'category-header';
-            header.innerHTML = `<div class="flex items-center gap-1.5"><span class="text-lg">${icon}</span> <span>${cat.name}</span></div>
-                <div class="flex gap-1.5">
-                    <button class="${hasItems ? 'btn-clear-category-active' : 'btn-clear-category'}" onclick="clearCategoryCart(${cat.id})">ยกเลิก</button>
-                    <button class="btn-add-item" onclick="openAddMenuModal(${cat.id}, '${cat.name}')">+ เมนู</button>
-                </div>`;
-            card.appendChild(header);
-
-            const list = document.createElement('div'); 
-            list.className = 'menu-list';
-            
-            foods
-                .filter(f => Number(f.group_id) === Number(cat.id))
-                .forEach(food => {
-                    const btn = document.createElement('button'); 
-                    btn.className = 'menu-item-btn';
-                    const count = cart.filter(i => String(i.food_id) === String(food.id)).reduce((s, i) => s + (Number(i.qty) || 0), 0);
-                    
-                    if (count > 0) {
-                        btn.classList.add('selected');
-                        btn.innerHTML = `${food.name}<span class="cart-badge">${count}</span>`;
-                    } else {
-                        btn.innerText = food.name;
-                    }
-                    btn.onclick = () => openOrderModal(food);
-                    list.appendChild(btn);
-                });
-
-            card.appendChild(list);
-            container.appendChild(card);
+        window.addEventListener('DOMContentLoaded', async () => {
+            initDatabase();
+            updateCartUI();
+            await loadData();
         });
-    }
 
-    function openOrderModal(food) {
-        currentFoodItem = food;
-        const existingIndex = cart.findIndex(i => String(i.food_id) === String(food.id));
-        
-        let customPriceVal = '';
+        async function loadData() {
+            const container = document.getElementById('quickNavContainer');
+            if (!db) {
+                container.innerHTML = '<div class="col-span-2 text-center py-8 text-rose-500 font-bold text-xs">❌ ไม่พบการเชื่อมต่อ Supabase</div>';
+                return;
+            }
 
-        if (existingIndex > -1) {
-            const item = cart[existingIndex];
-            currentModalData = { 
-                qty: Number(item.qty) || 1, 
-                fried_egg: Number(item.fried_egg) || 0, 
-                omelet: Number(item.omelet) || 0, 
-                note: item.note || '' 
+            try {
+                const [catRes, foodRes] = await Promise.all([
+                    db.from('food_groups').select('*').order('id', { ascending: true }),
+                    db.from('foods').select('*').order('id', { ascending: true })
+                ]);
+
+                if (catRes.error) throw catRes.error;
+                if (foodRes.error) throw foodRes.error;
+                
+                categories = (catRes.data || []).sort((a, b) => Number(a.id) - Number(b.id)); 
+                foods = foodRes.data || [];
+
+                renderQuickNav();
+            } catch (err) { 
+                console.error('Error loading data:', err); 
+                container.innerHTML = `<div class="col-span-2 text-center py-8 text-rose-500 font-bold text-xs">❌ เกิดข้อผิดพลาด: ${err.message || 'ไม่สามารถดึงข้อมูลได้'}</div>`;
+            }
+        }
+
+        // Render ปุ่มหมวดหมู่แบบ 2 คอลัมน์ พร้อม Badge แสดงจำนวนชิ้นรวมประจำหมวดหมู่
+        function renderQuickNav() {
+            const navContainer = document.getElementById('quickNavContainer');
+            if (!navContainer) return;
+            navContainer.innerHTML = '';
+
+            if (categories.length === 0) {
+                navContainer.innerHTML = '<div class="col-span-2 text-center py-8 text-slate-400 font-bold text-xs">ไม่พบหมวดหมู่อาหาร</div>';
+                return;
+            }
+
+            const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
+
+            categories.forEach((cat, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'cat-nav-btn';
+                
+                const icon = categoryIcons[index % categoryIcons.length];
+                
+                // คำนวณจำนวนชิ้นรวมของอาหารที่เลือกในหมวดหมู่นี้
+                const catFoodIds = foods
+                    .filter(f => Number(f.group_id) === Number(cat.id))
+                    .map(f => String(f.id));
+
+                const catTotalQty = currentCart
+                    .filter(item => catFoodIds.includes(String(item.food_id)))
+                    .reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+
+                let badgeHTML = '';
+                if (catTotalQty > 0) {
+                    badgeHTML = `<span class="cat-badge-main">${catTotalQty}</span>`;
+                }
+
+                btn.innerHTML = `<span class="cat-nav-icon">${icon}</span> <span>${cat.name}</span>${badgeHTML}`;
+                
+                // แตะปุ่มแล้วเรียก CategoryFoodPopup
+                btn.onclick = () => openCategoryFoodPopup(cat, icon);
+                navContainer.appendChild(btn);
+            });
+        }
+
+        // ฟังก์ชันเรียกใช้งาน Pop-up รายการอาหาร
+        function openCategoryFoodPopup(cat, icon) {
+            const catFoods = foods.filter(f => Number(f.group_id) === Number(cat.id));
+            
+            CategoryFoodPopup.open({
+                category: cat,
+                foods: catFoods,
+                cart: cart,
+                icon: icon,
+                onSelectFood: (food) => {
+                    openOrderModal(food);
+                },
+                onAddMenu: (catObj) => {
+                    openAddMenuModal(catObj.id, catObj.name);
+                },
+                onClearCategory: (catId) => {
+                    clearCategoryCart(catId);
+                }
+            });
+        }
+
+        function updateCartUI() {
+            cart = JSON.parse(localStorage.getItem('cart')) || [];
+            const totalItems = cart.length;
+            const totalQty = cart.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+            document.getElementById('cartCountText').textContent = `${totalItems} รายการ | ${totalQty} ชิ้น`;
+            
+            // อัปเดต Badge บนปุ่มหมวดหมู่ในหน้าหลักด้วยทุกครั้ง
+            renderQuickNav();
+        }
+
+        function openOrderModal(food) {
+            currentFoodItem = food;
+            const existingIndex = cart.findIndex(i => String(i.food_id) === String(food.id));
+            
+            let customPriceVal = '';
+
+            if (existingIndex > -1) {
+                const item = cart[existingIndex];
+                currentModalData = { 
+                    qty: Number(item.qty) || 1, 
+                    fried_egg: Number(item.fried_egg) || 0, 
+                    omelet: Number(item.omelet) || 0, 
+                    note: item.note || '' 
+                };
+
+                if (item.is_custom_price && item.custom_price) {
+                    customPriceVal = item.custom_price;
+                }
+            } else {
+                currentModalData = { qty: 1, fried_egg: 0, omelet: 0, note: '' };
+            }
+
+            document.getElementById('modalFoodName').innerText = food.name;
+            document.getElementById('modalQtyVal').innerText = currentModalData.qty;
+            document.getElementById('modalEggVal').innerText = currentModalData.fried_egg;
+            document.getElementById('modalOmeletVal').innerText = currentModalData.omelet;
+            document.getElementById('modalNoteInput').value = currentModalData.note;
+            document.getElementById('modalCustomPriceInput').value = customPriceVal;
+
+            const foodGroupId = Number(food.group_id);
+            const isBoxMeal = BOX_MEAL_GROUP_IDS.includes(foodGroupId);
+
+            const eggContainer = document.getElementById('toppingEggContainer');
+            const omeletContainer = document.getElementById('toppingOmeletContainer');
+
+            if (isBoxMeal) {
+                eggContainer.style.display = 'flex';
+                omeletContainer.style.display = 'flex';
+            } else {
+                eggContainer.style.display = 'none';
+                omeletContainer.style.display = 'none';
+                currentModalData.fried_egg = 0;
+                currentModalData.omelet = 0;
+            }
+
+            document.getElementById('orderModalOverlay').classList.add('active');
+        }
+
+        function closeOrderModal() {
+            document.getElementById('orderModalOverlay').classList.remove('active');
+        }
+
+        function adjustModalQty(delta) {
+            currentModalData.qty = Math.max(1, currentModalData.qty + delta);
+            document.getElementById('modalQtyVal').innerText = currentModalData.qty;
+        }
+
+        function adjustTopping(type, delta) {
+            if (type === 'fried_egg') {
+                currentModalData.fried_egg = Math.max(0, currentModalData.fried_egg + delta);
+                document.getElementById('modalEggVal').innerText = currentModalData.fried_egg;
+            } else if (type === 'omelet') {
+                currentModalData.omelet = Math.max(0, currentModalData.omelet + delta);
+                document.getElementById('modalOmeletVal').innerText = currentModalData.omelet;
+            }
+        }
+
+        function saveOrderFromModal() {
+            if (!currentFoodItem) return;
+
+            const note = document.getElementById('modalNoteInput').value.trim();
+            const customPriceRaw = document.getElementById('modalCustomPriceInput').value;
+            const customPriceVal = parseFloat(customPriceRaw);
+            const hasCustomPrice = !isNaN(customPriceVal) && customPriceVal > 0;
+
+            const existingIndex = cart.findIndex(i => String(i.food_id) === String(currentFoodItem.id));
+
+            const orderItem = {
+                food_id: String(currentFoodItem.id),
+                name: currentFoodItem.name,
+                qty: currentModalData.qty,
+                fried_egg: currentModalData.fried_egg,
+                omelet: currentModalData.omelet,
+                note: note,
+                is_custom_price: hasCustomPrice,
+                custom_price: hasCustomPrice ? customPriceVal : 0,
+                price_1: Number(currentFoodItem.price_1 || 0),
+                price_2: Number(currentFoodItem.price_2 || 0),
+                price_3: Number(currentFoodItem.price_3 || 0)
             };
 
-            if (item.is_custom_price && item.custom_price) {
-                customPriceVal = item.custom_price;
+            if (existingIndex > -1) {
+                cart[existingIndex] = orderItem;
+            } else {
+                cart.push(orderItem);
             }
-        } else {
-            currentModalData = { qty: 1, fried_egg: 0, omelet: 0, note: '' };
+
+            localStorage.setItem('cart', JSON.stringify(cart));
+            closeOrderModal();
+            updateCartUI();
+
+            // รีเฟรช Pop-up รายการอาหาร ให้ Badge รายเมนูอัปเดตแบบเรียลไทม์
+            const currentCat = categories.find(c => Number(c.id) === Number(currentFoodItem.group_id));
+            if (currentCat) {
+                const icon = categoryIcons[categories.indexOf(currentCat) % categoryIcons.length];
+                openCategoryFoodPopup(currentCat, icon);
+            }
         }
 
-        document.getElementById('modalFoodName').innerText = food.name;
-        document.getElementById('modalQtyVal').innerText = currentModalData.qty;
-        document.getElementById('modalEggVal').innerText = currentModalData.fried_egg;
-        document.getElementById('modalOmeletVal').innerText = currentModalData.omelet;
-        document.getElementById('modalNoteInput').value = currentModalData.note;
-        document.getElementById('modalCustomPriceInput').value = customPriceVal;
-
-        const foodGroupId = Number(food.group_id);
-        const isBoxMeal = BOX_MEAL_GROUP_IDS.includes(foodGroupId);
-
-        const eggContainer = document.getElementById('toppingEggContainer');
-        const omeletContainer = document.getElementById('toppingOmeletContainer');
-
-        if (isBoxMeal) {
-            eggContainer.style.display = 'flex';
-            omeletContainer.style.display = 'flex';
-        } else {
-            eggContainer.style.display = 'none';
-            omeletContainer.style.display = 'none';
-            currentModalData.fried_egg = 0;
-            currentModalData.omelet = 0;
+        function clearCategoryCart(catId) {
+            const catFoodIds = foods
+                .filter(f => Number(f.group_id) === Number(catId))
+                .map(f => String(f.id));
+            
+            cart = cart.filter(item => !catFoodIds.includes(String(item.food_id)));
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartUI();
         }
 
-        document.getElementById('orderModalOverlay').classList.add('active');
-    }
-
-    function closeOrderModal() {
-        document.getElementById('orderModalOverlay').classList.remove('active');
-    }
-
-    function adjustModalQty(delta) {
-        currentModalData.qty = Math.max(1, currentModalData.qty + delta);
-        document.getElementById('modalQtyVal').innerText = currentModalData.qty;
-    }
-
-    function adjustTopping(type, delta) {
-        if (type === 'fried_egg') {
-            currentModalData.fried_egg = Math.max(0, currentModalData.fried_egg + delta);
-            document.getElementById('modalEggVal').innerText = currentModalData.fried_egg;
-        } else if (type === 'omelet') {
-            currentModalData.omelet = Math.max(0, currentModalData.omelet + delta);
-            document.getElementById('modalOmeletVal').innerText = currentModalData.omelet;
-        }
-    }
-
-    function saveOrderFromModal() {
-        if (!currentFoodItem) return;
-
-        const note = document.getElementById('modalNoteInput').value.trim();
-        
-        const customPriceRaw = document.getElementById('modalCustomPriceInput').value;
-        const customPriceVal = parseFloat(customPriceRaw);
-        const hasCustomPrice = !isNaN(customPriceVal) && customPriceVal > 0;
-
-        const existingIndex = cart.findIndex(i => String(i.food_id) === String(currentFoodItem.id));
-
-        const orderItem = {
-            food_id: String(currentFoodItem.id),
-            name: currentFoodItem.name,
-            qty: currentModalData.qty,
-            fried_egg: currentModalData.fried_egg,
-            omelet: currentModalData.omelet,
-            note: note,
-            is_custom_price: hasCustomPrice,
-            custom_price: hasCustomPrice ? customPriceVal : 0,
-            price_1: Number(currentFoodItem.price_1 || 0),
-            price_2: Number(currentFoodItem.price_2 || 0),
-            price_3: Number(currentFoodItem.price_3 || 0)
-        };
-
-        if (existingIndex > -1) {
-            cart[existingIndex] = orderItem;
-        } else {
-            cart.push(orderItem);
+        function clearAllCart() {
+            document.getElementById('confirmClearModalOverlay').classList.add('active');
         }
 
-        localStorage.setItem('cart', JSON.stringify(cart));
-        closeOrderModal();
-        updateCartUI();
-        renderCategoryGrid();
-    }
-
-    function clearCategoryCart(catId) {
-        const catFoodIds = foods
-            .filter(f => Number(f.group_id) === Number(catId))
-            .map(f => String(f.id));
-        
-        cart = cart.filter(item => !catFoodIds.includes(String(item.food_id)));
-        localStorage.setItem('cart', JSON.stringify(cart));
-        updateCartUI();
-        renderCategoryGrid();
-    }
-
-    function clearAllCart() {
-        document.getElementById('confirmClearModalOverlay').classList.add('active');
-    }
-
-    function closeConfirmClearModal() {
-        document.getElementById('confirmClearModalOverlay').classList.remove('active');
-    }
-
-    function executeClearAllCart() {
-        cart = [];
-        localStorage.removeItem('cart');
-        closeConfirmClearModal();
-        updateCartUI();
-        renderCategoryGrid();
-    }
-
-    function goToSummary() {
-        window.location.href = 'ConfirmOrder.html';
-    }
-
-    function openAddMenuModal(catId, catName) {
-        document.getElementById('addMenuCatId').value = catId;
-        document.getElementById('addMenuCategoryTitle').innerText = `เพิ่มเมนูใหม่ (${catName})`;
-        document.getElementById('addMenuForm').reset();
-        document.getElementById('addMenuModalOverlay').classList.add('active');
-    }
-
-    function closeAddMenuModal() {
-        document.getElementById('addMenuModalOverlay').classList.remove('active');
-    }
-
-    async function handleAddNewMenu(e) {
-        e.preventDefault();
-        const catId = document.getElementById('addMenuCatId').value;
-        const name = document.getElementById('addMenuName').value.trim();
-        const p1 = parseFloat(document.getElementById('addMenuPrice1').value) || 0;
-        const p2 = parseFloat(document.getElementById('addMenuPrice2').value) || 0;
-        const p3 = parseFloat(document.getElementById('addMenuPrice3').value) || 0;
-
-        if (!name || !db) return;
-
-        try {
-            const { error: foodErr } = await db
-                .from('foods')
-                .insert([{ 
-                    name: name, 
-                    group_id: catId,
-                    price_1: p1,
-                    price_2: p2,
-                    price_3: p3,
-                    requires_stock: true
-                }]);
-
-            if (foodErr) throw foodErr;
-
-            closeAddMenuModal();
-            await loadData();
-        } catch (err) {
-            console.error('Add menu error:', err);
-            alert('ไม่สามารถเพิ่มเมนูได้: ' + err.message);
+        function closeConfirmClearModal() {
+            document.getElementById('confirmClearModalOverlay').classList.remove('active');
         }
-    }
-</script>
+
+        function executeClearAllCart() {
+            cart = [];
+            localStorage.removeItem('cart');
+            closeConfirmClearModal();
+            updateCartUI();
+        }
+
+        function goToSummary() {
+            window.location.href = 'ConfirmOrder.html';
+        }
+
+        function openAddMenuModal(catId, catName) {
+            document.getElementById('addMenuCatId').value = catId;
+            document.getElementById('addMenuCategoryTitle').innerText = `เพิ่มเมนูใหม่ (${catName})`;
+            document.getElementById('addMenuForm').reset();
+            document.getElementById('addMenuModalOverlay').classList.add('active');
+        }
+
+        function closeAddMenuModal() {
+            document.getElementById('addMenuModalOverlay').classList.remove('active');
+        }
+
+        async function handleAddNewMenu(e) {
+            e.preventDefault();
+            const catId = document.getElementById('addMenuCatId').value;
+            const name = document.getElementById('addMenuName').value.trim();
+            const p1 = parseFloat(document.getElementById('addMenuPrice1').value) || 0;
+            const p2 = parseFloat(document.getElementById('addMenuPrice2').value) || 0;
+            const p3 = parseFloat(document.getElementById('addMenuPrice3').value) || 0;
+
+            if (!name || !db) return;
+
+            try {
+                const { error: foodErr } = await db
+                    .from('foods')
+                    .insert([{ 
+                        name: name, 
+                        group_id: catId,
+                        price_1: p1,
+                        price_2: p2,
+                        price_3: p3,
+                        requires_stock: true
+                    }]);
+
+                if (foodErr) throw foodErr;
+
+                closeAddMenuModal();
+                await loadData();
+            } catch (err) {
+                console.error('Add menu error:', err);
+                alert('ไม่สามารถเพิ่มเมนูได้: ' + err.message);
+            }
+        }
+    </script>
 </body>
 </html>
