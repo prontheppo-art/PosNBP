@@ -29,59 +29,6 @@
             overflow: hidden;
         }
 
-        /* สไตล์แถบปุ่มหมวดหมู่: พอดีช่อง ไม่ต้อง Scroll ขยายอัตโนมัติตามรายการ */
-        .category-nav-wrap {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr)); /* วาง 2 คอลัมน์สมบูรณ์แบบ */
-            gap: 0.35rem;
-            padding: 0.25rem 0.1rem;
-            width: 100%;
-            /* เอา max-height และ overflow ออก เพื่อไม่ให้เกิด scrollbar */
-        }
-
-        .cat-nav-btn {
-            background-color: #ffffff;
-            border: 1px solid #cbd5e1;
-            color: #1e293b;
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 0.45rem 0.3rem;
-            border-radius: 0.6rem;
-            text-align: center;
-            white-space: nowrap;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            transition: all 0.15s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.25rem;
-            cursor: pointer;
-            min-height: 38px;
-        }
-
-        .cat-nav-btn:active, .cat-nav-btn.active {
-            background-color: #10b981;
-            color: #ffffff;
-            border-color: #10b981;
-            transform: scale(0.97);
-        }
-
-        .cat-nav-btn.btn-all {
-            grid-column: span 2 / span 2; /* ปุ่มแสดงทั้งหมดพาดยาวเต็ม 2 คอลัมน์ */
-        }
-
-        .cat-nav-btn.btn-all.active {
-            background-color: #ef4444;
-            color: #ffffff;
-            border-color: #ef4444;
-        }
-
-        .cat-nav-icon {
-            font-size: 0.95rem;
-            display: inline-block;
-            flex-shrink: 0;
-        }
-
         .category-card {
             display: flex;
             flex-direction: column;
@@ -93,7 +40,6 @@
             margin-bottom: 2px;
             flex-shrink: 0;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            scroll-margin-top: 10px;
         }
 
         .card-body-scroll {
@@ -119,16 +65,21 @@
             <div class="shrink-0 bg-white pb-2 relative z-20">
                 <h2 class="text-xl font-bold text-gray-800 text-center mb-2">🏷️ ดูแลและแก้ไขตารางราคา</h2>
                 
-                <!-- แถบปุ่มกดเลือกหมวดหมู่ ปรับขนาดอัตโนมัติ พอดีช่อง ไม่ต้อง Scroll -->
-                <div id="quickNavContainer" class="category-nav-wrap border border-slate-200 p-1.5 rounded-2xl bg-slate-50">
-                    <div class="text-center col-span-2 text-xs text-slate-400 py-2">⏳ กำลังโหลดหมวดหมู่...</div>
+                <div class="relative w-full mb-1">
+                    <button type="button" onclick="toggleCategoryDropdown()" id="categorySelectBtn" class="w-full border border-gray-300 rounded-2xl px-4 py-3 text-xs font-bold text-gray-700 outline-none bg-white flex items-center justify-between shadow-2xs cursor-pointer">
+                        <span id="selectedCategoryText" class="truncate">-- แสดงทุกหมวดหมู่ --</span>
+                        <span class="text-gray-400 text-[10px] shrink-0 ml-1">▼</span>
+                    </button>
+                    
+                    <div id="categoryDropdownPopup" class="hidden absolute left-0 top-full mt-1.5 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 p-2 space-y-1 max-h-60 overflow-y-auto w-max min-w-full">
+                    </div>
                 </div>
             </div>
 
             <hr class="border-gray-100 my-1 shrink-0">
 
-            <!-- ส่วนตารางหลัก (จะย่อ-ขยายพื้นที่ตามปุ่มด้านบนโดยอัตโนมัติ) -->
-            <div id="tablesContainer" class="space-y-4 flex-1 min-h-0 flex flex-col pr-1 pb-1 overflow-y-auto relative z-0" style="-webkit-overflow-scrolling: touch; scroll-behavior: smooth;">
+            <!-- ส่วนตารางหลัก -->
+            <div id="tablesContainer" class="space-y-4 flex-1 min-h-0 flex flex-col pr-1 pb-1 overflow-y-auto relative z-0" style="-webkit-overflow-scrolling: touch;">
                 <div class="text-center text-gray-400 text-xs py-8">⏳ กำลังโหลดข้อมูลเมนูและราคา...</div>
             </div>
 
@@ -147,10 +98,32 @@
         </div>
     </div>
 
-    <!-- ดึงไฟล์คีย์ Supabase และไฟล์ Pop-up ปุ่มกดกลุ่มอาหารมาใช้งาน -->
-    <script src="key.js"></script>
-    <script src="FoodGroupPopup.js"></script>
+    <!-- Dialog / Popup สำหรับย้ายหมวดหมู่รายการอาหาร -->
+    <div id="changeCategoryModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-4 relative animate-fade-in">
+            <h3 class="text-base font-bold text-gray-800 text-center border-b pb-2">📂 ย้ายกลุ่มหมวดหมู่</h3>
+            
+            <div class="text-xs text-gray-600">
+                <p class="mb-1 font-semibold">รายการอาหาร:</p>
+                <p id="modalFoodName" class="text-sm font-bold text-blue-600 bg-blue-50 p-2 rounded-xl mb-3"></p>
+                
+                <label class="block mb-1 font-semibold text-gray-700">เลือกกลุ่มอาหารใหม่:</label>
+                <select id="modalCategorySelect" class="w-full border border-gray-300 rounded-xl p-2.5 text-xs font-bold outline-none focus:border-blue-500 bg-white">
+                </select>
+            </div>
 
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button type="button" onclick="closeChangeCategoryModal()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-xl text-xs">
+                    ยกเลิก
+                </button>
+                <button type="button" onclick="saveNewCategory()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl text-xs shadow-md">
+                    บันทึก
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="key.js"></script>
     <script>
         document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
         document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
@@ -175,7 +148,7 @@
         let menus = [];
         let foodGroups = []; 
         let currentSelectedCategory = 'all';
-        const categoryIcons = ['🍱', '🍲', '🍳', '🍚', '🥩', '⭐', '🥗', '🛍️', '🍽️', '🥢', '🍹'];
+        let currentEditingFoodId = null;
 
         window.addEventListener('DOMContentLoaded', async () => {
             if (typeof window.supabaseClient !== 'undefined') {
@@ -189,6 +162,14 @@
             } else {
                 document.getElementById('tablesContainer').innerHTML = `<div class="text-center text-red-500 text-xs py-8">❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ (โปรดตรวจสอบ key.js)</div>`;
             }
+
+            window.addEventListener('click', (e) => {
+                const btn = document.getElementById('categorySelectBtn');
+                const popup = document.getElementById('categoryDropdownPopup');
+                if (btn && popup && !btn.contains(e.target) && !popup.contains(e.target)) {
+                    popup.classList.add('hidden');
+                }
+            });
         });
 
         async function loadAllData() {
@@ -206,7 +187,7 @@
                     foodGroups = uniqueCats.map((cat) => ({ id: cat, name: `กลุ่ม ${cat}` }));
                 }
 
-                renderQuickNav();
+                renderCategoryDropdownPopup();
                 renderMenuTables();
             } catch (err) {
                 console.error("Error loading price editor data:", err);
@@ -214,80 +195,40 @@
             }
         }
 
-        // แสดงแถบปุ่มเลือกหมวดหมู่ 2 คอลัมน์ แบบปรับขนาดอัตโนมัติ
-        function renderQuickNav() {
-            const navContainer = document.getElementById('quickNavContainer');
-            if (!navContainer) return;
-            navContainer.innerHTML = '';
+        function renderCategoryDropdownPopup() {
+            const popup = document.getElementById('categoryDropdownPopup');
+            
+            let html = `
+                <div onclick="selectCategory('all', '-- แสดงทุกหมวดหมู่ --')" class="px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition hover:bg-gray-100 flex items-center justify-between whitespace-nowrap gap-4 ${currentSelectedCategory === 'all' ? 'bg-red-50 text-red-600' : 'text-gray-700'}">
+                    <span class="truncate">-- แสดงทุกหมวดหมู่ --</span>
+                    ${currentSelectedCategory === 'all' ? '<span class="text-red-600 shrink-0 ml-2">✓</span>' : ''}
+                </div>
+            `;
 
-            // ปุ่ม "แสดงทุกหมวดหมู่"
-            const allBtn = document.createElement('button');
-            allBtn.type = 'button';
-            allBtn.className = `cat-nav-btn btn-all ${currentSelectedCategory === 'all' ? 'active' : ''}`;
-            allBtn.innerHTML = `<span class="cat-nav-icon">🌐</span> <span>-- แสดงทุกหมวดหมู่ --</span>`;
-            allBtn.onclick = () => selectCategory('all');
-            navContainer.appendChild(allBtn);
-
-            // ปุ่มหมวดหมู่อื่นๆ วางแบบกริต 2 คอลัมน์ลงมาเรื่อยๆ
-            foodGroups.forEach((cat, index) => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
+            foodGroups.forEach(cat => {
                 const isSelected = String(currentSelectedCategory) === String(cat.id);
-                btn.className = `cat-nav-btn ${isSelected ? 'active' : ''}`;
-                
-                const icon = categoryIcons[index % categoryIcons.length];
-                btn.innerHTML = `<span class="cat-nav-icon">${icon}</span> <span class="truncate">${cat.name}</span>`;
-                btn.onclick = () => selectCategory(cat.id);
-                navContainer.appendChild(btn);
+                html += `
+                    <div onclick="selectCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')" class="px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition hover:bg-gray-100 flex items-center justify-between whitespace-nowrap gap-4 ${isSelected ? 'bg-red-50 text-red-600' : 'text-gray-700'}">
+                        <span class="truncate">📁 ${cat.name}</span>
+                        ${isSelected ? '<span class="text-red-600 shrink-0 ml-2">✓</span>' : ''}
+                    </div>
+                `;
             });
+
+            popup.innerHTML = html;
         }
 
-        function selectCategory(catId) {
-            currentSelectedCategory = catId;
-            renderQuickNav();
+        function toggleCategoryDropdown() {
+            const popup = document.getElementById('categoryDropdownPopup');
+            popup.classList.toggle('hidden');
+        }
+
+        function selectCategory(value, label) {
+            currentSelectedCategory = value;
+            document.getElementById('selectedCategoryText').textContent = label;
+            document.getElementById('categoryDropdownPopup').classList.add('hidden');
+            renderCategoryDropdownPopup();
             renderMenuTables();
-
-            if (catId !== 'all') {
-                setTimeout(() => {
-                    const targetElement = document.getElementById(`category-card-${catId}`);
-                    if (targetElement) {
-                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                }, 50);
-            }
-        }
-
-        // เรียก Pop-up เมื่อแตะชื่อเมนู เพื่อย้ายกลุ่มอาหาร
-        function openChangeCategoryModal(foodId) {
-            const foodItem = menus.find(m => String(m.id) === String(foodId));
-            if (!foodItem) return;
-
-            FoodGroupPopup.open({
-                title: '📂 ย้ายกลุ่มหมวดหมู่',
-                subtitle: `รายการอาหาร: <b class="text-blue-600 font-bold">${foodItem.name}</b>`,
-                categories: foodGroups,
-                selectedId: foodItem.group_id,
-                includeAllOption: false,
-                onSelect: async (selected) => {
-                    if (String(foodItem.group_id) === String(selected.id)) return;
-
-                    try {
-                        const { error } = await db.from('foods')
-                            .update({ group_id: parseInt(selected.id) || selected.id })
-                            .eq('id', parseInt(foodId));
-
-                        if (error) {
-                            alert('เกิดข้อผิดพลาดในการย้ายหมวดหมู่: ' + error.message);
-                        } else {
-                            foodItem.group_id = selected.id;
-                            renderMenuTables();
-                        }
-                    } catch (err) {
-                        console.error("Exception on saveNewCategory:", err);
-                        alert("เกิดข้อผิดพลาด: " + err.message);
-                    }
-                }
-            });
         }
 
         function renderMenuTables() {
@@ -319,6 +260,7 @@
 
                         rowsHtml += `
                             <tr class="${borderClass}">
+                                <!-- กดที่ชื่อเมนูเพื่อเปิด Dialog ย้ายหมวดหมู่ -->
                                 <td onclick="openChangeCategoryModal('${m.id}')" 
                                     class="p-2 font-bold text-gray-800 text-left pl-2.5 text-xs cursor-pointer hover:bg-blue-50 active:bg-blue-100 transition rounded-lg" style="width: 49%;" title="แตะเพื่อย้ายกลุ่มอาหาร">
                                     <span class="hover:underline flex items-center gap-1">
@@ -356,7 +298,7 @@
                 }
 
                 allTablesHtml += `
-                    <div class="category-card" id="category-card-${currentCat.id}">
+                    <div class="category-card">
                         <div class="bg-slate-700 text-white font-bold py-2 px-3 text-xs flex items-center justify-between shrink-0 z-20">
                             <span class="truncate flex items-center gap-1.5">📁 ${currentCat.name}</span>
                             <div class="flex items-center gap-1.5 shrink-0">
@@ -413,9 +355,72 @@
                 if (error) {
                     console.error(`❌ บันทึก ${priceColumn} ไม่สำเร็จ:`, error.message);
                     alert(`เกิดข้อผิดพลาดในการบันทึก: ${error.message}`);
+                } else {
+                    console.log(`✅ บันทึก ${priceColumn} ของ ID ${foodId} เป็น ${parsedPrice} บาท สำเร็จ!`);
                 }
             } catch (err) {
                 console.error("Exception on updatePriceDirect:", err);
+            }
+        }
+
+        // ==========================================
+        // ฟังก์ชัน Dialog เปิด/ปิด/ย้ายหมวดหมู่
+        // ==========================================
+        function openChangeCategoryModal(foodId) {
+            const foodItem = menus.find(m => String(m.id) === String(foodId));
+            if (!foodItem) return;
+
+            currentEditingFoodId = foodId;
+            document.getElementById('modalFoodName').textContent = foodItem.name;
+
+            const selectEl = document.getElementById('modalCategorySelect');
+            selectEl.innerHTML = '';
+
+            foodGroups.forEach(group => {
+                const isSelected = String(group.id) === String(foodItem.group_id);
+                const option = document.createElement('option');
+                option.value = group.id;
+                option.textContent = group.name;
+                if (isSelected) option.selected = true;
+                selectEl.appendChild(option);
+            });
+
+            document.getElementById('changeCategoryModal').classList.remove('hidden');
+        }
+
+        function closeChangeCategoryModal() {
+            document.getElementById('changeCategoryModal').classList.add('hidden');
+            currentEditingFoodId = null;
+        }
+
+        async function saveNewCategory() {
+            if (!currentEditingFoodId) return;
+
+            const newGroupId = document.getElementById('modalCategorySelect').value;
+            const foodItem = menus.find(m => String(m.id) === String(currentEditingFoodId));
+
+            if (!foodItem) return;
+
+            if (String(foodItem.group_id) === String(newGroupId)) {
+                closeChangeCategoryModal();
+                return;
+            }
+
+            try {
+                const { error } = await db.from('foods')
+                    .update({ group_id: parseInt(newGroupId) || newGroupId })
+                    .eq('id', parseInt(currentEditingFoodId));
+
+                if (error) {
+                    alert('เกิดข้อผิดพลาดในการย้ายหมวดหมู่: ' + error.message);
+                } else {
+                    foodItem.group_id = newGroupId;
+                    closeChangeCategoryModal();
+                    renderMenuTables();
+                }
+            } catch (err) {
+                console.error("Exception on saveNewCategory:", err);
+                alert("เกิดข้อผิดพลาด: " + err.message);
             }
         }
     </script>

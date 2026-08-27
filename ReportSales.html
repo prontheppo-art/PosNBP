@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
-    <title>สรุปยอดขาย</title>
+    <title>สรุปยอดขาย - ลาบหนองบัวลำภู</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="key.js"></script>
@@ -65,7 +65,8 @@
                         </div>
                     </div>
 
-                    <a href="index.html" class="bg-rose-500 hover:bg-rose-600 text-white font-bold px-4 py-2.5 rounded-2xl text-xs text-center transition flex items-center justify-center gap-1 shadow-sm shrink-0 no-underline">
+                    <!-- แก้ไขลิงก์ปลายทางเป็น PageReport.html ตามสั่ง โดยคงตำแหน่งและสไตล์เดิมไว้ -->
+                    <a href="PageReport.html" class="bg-rose-500 hover:bg-rose-600 text-white font-bold px-4 py-2.5 rounded-2xl text-xs text-center transition flex items-center justify-center gap-1 shadow-sm shrink-0 no-underline">
                         🏠 หน้าหลัก
                     </a>
                 </div>
@@ -138,17 +139,35 @@
             return dateString;
         }
 
-        // ฟังก์ชันประมวลผลนับจำนวนบิลออเดอร์ในแต่ละวัน
+        // ฟังก์ชันประมวลผลนับจำนวนบิลออเดอร์ในแต่ละวัน (กรองเอาเฉพาะบิลที่ไม่ถูกยกเลิก/รอดำเนินการ)
         function getOrderCounts() {
             const counts = {};
             allOrders.forEach(order => {
                 const dateStr = getOrderDateStr(order);
-                if (dateStr) {
+                const status = (order.status || '').toLowerCase();
+                if (dateStr && status !== 'cancelled' && status !== 'pending') {
                     counts[dateStr] = (counts[dateStr] || 0) + 1;
                 }
             });
             return counts;
         }
+
+        // ปิด Calendar เมื่อแตะพื้นที่ภายนอก
+        document.addEventListener('pointerdown', function(e) {
+            const calendarModal = document.getElementById('slenderCalendarModal') || document.getElementById('calendarModal') || document.querySelector('.slender-calendar-overlay');
+            if (calendarModal && !calendarModal.classList.contains('hidden') && calendarModal.style.display !== 'none') {
+                const calendarContent = calendarModal.querySelector('.calendar-content') || calendarModal.querySelector('.bg-white') || calendarModal.children[0];
+                
+                if (calendarContent && !calendarContent.contains(e.target) && !e.target.closest('#dateFilterBtn')) {
+                    if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.close === 'function') {
+                        CalendarSystem.close();
+                    } else {
+                        calendarModal.classList.add('hidden');
+                        calendarModal.style.display = 'none';
+                    }
+                }
+            }
+        });
 
         window.addEventListener('DOMContentLoaded', async () => {
             window.lastTouchEnd = 0;
@@ -281,11 +300,11 @@
             renderOrderHistory(filtered);
         }
 
-        // ฟังก์ชันเปิด CalendarSystem พร้อมส่งข้อมูลนับบิล
+        // ฟังก์ชันเปิด CalendarSystem พร้อมส่งข้อมูลนับบิลรายวัน
         function openCustomCalendar() {
             if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.open === 'function') {
-                const eventCounts = getOrderCounts(); // ดึงจำนวนบิลรายวัน
-                CalendarSystem.open(CalendarSystem.selectedDateStr, eventCounts); // ส่งเข้าไปยังปฏิทิน
+                const eventCounts = getOrderCounts();
+                CalendarSystem.open(CalendarSystem.selectedDateStr, eventCounts);
             } else {
                 alert("ระบบปฏิทินไม่พร้อมใช้งาน");
             }

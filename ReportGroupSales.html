@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <title>สรุปยอดขายแยกตามกลุ่มลูกค้า - ลาบหนองบัวลำภู</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- เรียกไฟล์คีย์แยกตามเงื่อนไขเพื่อดึง SUPABASE_URL และ SUPABASE_KEY -->
+    <script src="key.js"></script>
+    <!-- เรียกไฟล์ Calendar System -->
+    <script src="slender.js"></script>
+
+    <style>
+      /* CSS เฉพาะของ UI แอป */
+      html, body { 
+          height: 100%; 
+          margin: 0; 
+          padding: 0; 
+          overflow: hidden; 
+          font-family: sans-serif; 
+          background: #f4f6f9; 
+          touch-action: pan-y; 
+          -webkit-text-size-adjust: 100%;
+          -webkit-user-select: none;
+          user-select: none;
+      }
+
+      .app-container { 
+          max-width: 500px; 
+          margin: 0 auto; 
+          height: 100dvh; 
+          background: #fff; 
+          display: grid; 
+          grid-template-rows: auto auto 1fr auto; 
+          box-sizing: border-box; 
+          overflow: hidden;
+      }
+    </style>
+</head>
+<body>
+
+<div class="app-container shadow-xl">
+    <!-- Header Section (Fixed Top) -->
+    <div class="py-3 px-4 bg-white border-b flex justify-center items-center shrink-0 shadow-2xs">
+        <h1 class="font-black text-lg text-slate-800 tracking-tight flex items-center gap-1.5">
+            📊 สรุปยอดขายแยกตามกลุ่มลูกค้า
+        </h1>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="p-3 bg-slate-50 border-b shrink-0">
+        <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-100 flex items-center justify-between">
+            <span class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                📅 เลือกวันที่ดูยอดขาย:
+            </span>
+            <button type="button" onclick="openCustomCalendar()" id="dateFilterBtn" class="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-blue-700 shadow-xs flex items-center gap-1 cursor-pointer">
+                <span id="dateButtonText" class="font-bold text-blue-600">--/--/----</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Content Section (Scrollable Container) -->
+    <div id="summaryContainer" class="p-3 overflow-y-auto space-y-3 bg-slate-100" style="-webkit-overflow-scrolling: touch;">
+        <div class="text-center text-slate-400 py-10 text-xs font-medium">กำลังโหลดข้อมูลยอดขาย...</div>
+    </div>
+
+    <!-- Footer Section -->
+    <div class="p-3 bg-white border-t shrink-0">
+        <a href="PageReport.html" class="w-full bg-slate-700 hover:bg-slate-800 active:scale-98 text-white font-bold py-3 rounded-xl text-xs text-center transition flex items-center justify-center gap-1.5 shadow-md no-underline">
+            ⬅️ กลับหน้าศูนย์รวมรายงาน
+        </a>
+    </div>
+</div>
+
+<!-- Modal Popup สำหรับแสดงรายละเอียดบิลและรายการอาหาร -->
+<div id="detailModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+        <!-- หัว Modal -->
+        <div class="bg-slate-800 text-white p-4 flex justify-between items-center">
+            <div>
+                <h3 id="modalGroupName" class="font-extrabold text-sm text-amber-400">กลุ่มลูกค้า</h3>
+                <p id="modalGroupMeta" class="text-[11px] text-slate-300 mt-0.5">จำนวน 0 บิล</p>
+            </div>
+            <button type="button" onclick="closeModal()" class="bg-slate-700 hover:bg-slate-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition cursor-pointer">✕</button>
+        </div>
+        <!-- รายการบิลและอาหารด้านใน -->
+        <div id="modalOrderList" class="p-4 overflow-y-auto space-y-3 flex-1 bg-slate-100">
+            <!-- รายการจะถูกแทรกที่นี่ -->
+        </div>
+        <!-- ท้าย Modal (ยอดรวม) -->
+        <div class="p-3 bg-white border-t flex justify-between items-center px-4">
+            <span class="text-xs font-bold text-slate-600">ยอดรวมของกลุ่มนี้:</span>
+            <span id="modalGroupTotal" class="text-sm font-black text-emerald-600">฿0.-</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ป้องกันการซูมหน้าจอด้วยนิ้ว
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener('gestureend', function (e) { e.preventDefault(); }, { passive: false });
+
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (event) {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, { passive: false });
+
+    document.addEventListener('touchstart', function (event) {
+        if (event.touches.length > 1) {
+            event.preventDefault();
+        }
+    }, { passive: false });
+
+    let db;
+    let allOrdersCache = [];
+    let globalGroupData = {};
+    let currentSelectedDate = "";
+
+    function getTodayString() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function formatDateThai(dateString) {
+        if (!dateString) return '';
+        const parts = dateString.split('-');
+        if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        return dateString;
+    }
+
+    // ฟังก์ชั่นสรุปจำนวนบิลรายวันเพื่อส่งให้ปฏิทินแสดง Badge สีแดง
+    function getOrderCounts() {
+        const counts = {};
+        allOrdersCache.forEach(o => {
+            const rawDate = o.order_date || o.created_at || o.date;
+            if (rawDate) {
+                const oDate = rawDate.split('T')[0].split(' ')[0];
+                const status = (o.status || '').toLowerCase();
+                if (status !== 'cancelled' && status !== 'pending') {
+                    counts[oDate] = (counts[oDate] || 0) + 1;
+                }
+            }
+        });
+        return counts;
+    }
+
+    // ระบบตรวจจับการแตะ/คลิกภายนอกกล่องปฏิทินเพื่อปิด (Outside Click Handler)
+    document.addEventListener('pointerdown', function(e) {
+        const calendarModal = document.getElementById('slenderCalendarModal') || document.getElementById('calendarModal') || document.querySelector('.slender-calendar-overlay');
+        if (calendarModal && !calendarModal.classList.contains('hidden') && calendarModal.style.display !== 'none') {
+            const calendarContent = calendarModal.querySelector('.calendar-content') || calendarModal.querySelector('.bg-white') || calendarModal.children[0];
+            
+            if (calendarContent && !calendarContent.contains(e.target) && !e.target.closest('#dateFilterBtn')) {
+                if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.close === 'function') {
+                    CalendarSystem.close();
+                } else {
+                    calendarModal.classList.add('hidden');
+                    calendarModal.style.display = 'none';
+                }
+            }
+        }
+    });
+
+    window.onload = async function() {
+        currentSelectedDate = getTodayString();
+        document.getElementById('dateButtonText').textContent = formatDateThai(currentSelectedDate);
+
+        if (typeof window.supabaseClient !== 'undefined') {
+            db = window.supabaseClient;
+        } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
+            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } else {
+            console.error("Critical Error: ไม่สามารถเชื่อมต่อ Supabase ได้");
+        }
+
+        if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.init === 'function') {
+            CalendarSystem.init((selectedDateStr) => {
+                if (selectedDateStr) {
+                    currentSelectedDate = selectedDateStr;
+                    document.getElementById('dateButtonText').textContent = formatDateThai(selectedDateStr);
+                    loadSalesData();
+                }
+            });
+        }
+
+        await fetchAllOrders();
+    };
+
+    async function fetchAllOrders() {
+        if (!db) return;
+        const { data, error } = await db.from('orders').select('*').order('id', { ascending: true });
+        
+        if (error) {
+            console.error("Error fetching orders:", error);
+            return;
+        }
+
+        allOrdersCache = data || [];
+        loadSalesData();
+    }
+
+    function openCustomCalendar() {
+        if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.open === 'function') {
+            const counts = getOrderCounts();
+            CalendarSystem.open(currentSelectedDate, counts);
+        }
+    }
+
+    function loadSalesData() {
+        const selectedDate = currentSelectedDate;
+        const container = document.getElementById('summaryContainer');
+        if (!selectedDate || !container) return;
+
+        container.innerHTML = `<div class="text-center text-slate-400 py-10 text-xs font-medium">⏳ กำลังประมวลผลข้อมูล...</div>`;
+
+        let filteredOrders = allOrdersCache.filter(o => {
+            let oDate = '';
+            const rawDate = o.order_date || o.created_at || o.date;
+            if (rawDate) {
+                oDate = rawDate.split('T')[0].split(' ')[0];
+            }
+            const status = (o.status || '').toLowerCase();
+            return oDate === selectedDate && status !== 'cancelled' && status !== 'pending';
+        });
+
+        if (filteredOrders.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-slate-400 py-12 text-xs font-medium">
+                    📭 ไม่พบข้อมูลการขายในวันที่ ${formatDateThai(selectedDate)}
+                </div>`;
+            return;
+        }
+
+        globalGroupData = {};
+        let grandTotalOrders = 0;
+        let grandTotalPrice = 0;
+
+        filteredOrders.forEach(order => {
+            let groupName = order.customer_group || order.group_name || order.customer_type || 'ทั่วไป';
+            if (groupName.includes(' ')) {
+                groupName = groupName.split(' ')[0];
+            }
+
+            if (!globalGroupData[groupName]) {
+                globalGroupData[groupName] = {
+                    orderCount: 0,
+                    totalPrice: 0,
+                    orders: []
+                };
+            }
+
+            let items = [];
+            if (typeof order.items === 'string') {
+                try { items = JSON.parse(order.items); } catch(e) { items = []; }
+            } else if (Array.isArray(order.items)) {
+                items = order.items;
+            } else if (typeof order.order_items === 'string') {
+                try { items = JSON.parse(order.order_items); } catch(e) { items = []; }
+            } else if (Array.isArray(order.order_items)) {
+                items = order.order_items;
+            }
+
+            let billTotal = Number(order.total_price || order.total_amount || order.total || 0);
+            if (billTotal === 0 && items.length > 0) {
+                billTotal = items.reduce((sum, item) => {
+                    let q = Number(item.qty || item.quantity || 1);
+                    let p = Number(item.price || item.unit_price || 0);
+                    return sum + (q * p);
+                }, 0);
+            }
+
+            globalGroupData[groupName].orderCount += 1;
+            globalGroupData[groupName].totalPrice += billTotal;
+            globalGroupData[groupName].orders.push({ ...order, computedTotal: billTotal, parsedItems: items });
+
+            grandTotalOrders += 1;
+            grandTotalPrice += billTotal;
+        });
+
+        let html = `
+            <div class="bg-slate-800 text-white p-3.5 rounded-xl shadow-xs mb-2">
+                <div class="text-[11px] text-slate-300">ยอดขายรวมทั้งสิ้น (${formatDateThai(selectedDate)})</div>
+                <div class="text-xl font-black text-emerald-400">฿${grandTotalPrice.toLocaleString()}.-</div>
+                <div class="text-[11px] text-slate-300 mt-1">จำนวนบิลทั้งหมด: <span class="text-white font-bold">${grandTotalOrders} บิล</span></div>
+            </div>
+        `;
+
+        for (let [groupName, data] of Object.entries(globalGroupData)) {
+            html += `
+                <div onclick="openModal('${groupName}')" class="bg-white border border-slate-200 hover:border-blue-400 active:scale-98 cursor-pointer transition rounded-xl p-3.5 flex justify-between items-center shadow-xs">
+                    <div>
+                        <div class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                            <span>👥 กลุ่ม:</span> <span class="text-blue-600 font-extrabold">${groupName}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-500 mt-1">
+                            จำนวนออร์เดอร์: <span class="font-bold text-slate-700">${data.orderCount} บิล</span> 
+                            <span class="text-blue-500 ml-1 font-semibold">(แตะดูรายละเอียด 🔍)</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs font-black text-emerald-600">฿${data.totalPrice.toLocaleString()}.-</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">กดเพื่อเปิดบิล</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    }
+
+    function openModal(groupName) {
+        const group = globalGroupData[groupName];
+        if (!group) return;
+
+        document.getElementById('modalGroupName').textContent = `👥 กลุ่ม: ${groupName}`;
+        document.getElementById('modalGroupMeta').textContent = `จำนวนบิลทั้งหมด: ${group.orderCount} บิล`;
+        document.getElementById('modalGroupTotal').textContent = `฿${group.totalPrice.toLocaleString()}.-`;
+
+        let listHtml = '';
+        group.orders.forEach((o, index) => {
+            let timeStr = "";
+            const rawTime = o.created_at || o.order_date || o.date;
+            if (rawTime && rawTime.includes('T')) {
+                let timePart = rawTime.split('T')[1];
+                if (timePart) {
+                    let parts = timePart.split(':');
+                    timeStr = ` (${parts[0]}:${parts[1]} น.)`;
+                }
+            }
+
+            let itemsHtml = '';
+            let itemsList = o.parsedItems || [];
+
+            if (itemsList && itemsList.length > 0) {
+                itemsList.forEach(item => {
+                    let itemName = item.name || item.food_name || item.title || 'ไม่ระบุชื่อเมนู';
+                    let itemQty = Number(item.qty || item.quantity || 1);
+                    let unitPrice = Number(item.price || item.unit_price || 0);
+                    let itemPrice = (item.total_price || item.sum) ? Number(item.total_price || item.sum) : (unitPrice * itemQty);
+                    let itemComment = item.comment || item.note || '';
+
+                    itemsHtml += `
+                        <div class="text-[11px] flex justify-between items-start text-slate-600 py-1 border-b border-slate-100 last:border-none">
+                            <div>
+                                <span class="font-medium text-slate-800">• ${itemName}</span> 
+                                <span class="text-blue-600 font-bold">x${itemQty}</span>
+                                ${itemComment ? `<div class="text-[10px] text-amber-600 italic">💬 หมายเหตุ: ${itemComment}</div>` : ''}
+                            </div>
+                            <span class="font-bold text-slate-700">฿${itemPrice.toLocaleString()}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                itemsHtml = `<div class="text-[11px] text-slate-400 italic">ไม่มีรายละเอียดรายการอาหารในบิลนี้</div>`;
+            }
+
+            listHtml += `
+                <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-2">
+                    <div class="flex justify-between items-center border-b pb-1.5">
+                        <div>
+                            <span class="font-black text-xs text-amber-900 bg-amber-100 px-2 py-0.5 rounded">บิลที่ #${index + 1}</span>
+                            <span class="text-slate-500 text-[11px]">${timeStr}</span>
+                            ${o.table_number || o.location_name ? `<span class="text-[10px] text-blue-500 ml-1 font-semibold">(${o.table_number || o.location_name})</span>` : ''}
+                        </div>
+                        <span class="font-black text-emerald-600 text-xs">฿${Number(o.computedTotal).toLocaleString()}.-</span>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-lg space-y-1">
+                        ${itemsHtml}
+                    </div>
+                </div>
+            `;
+        });
+
+        document.getElementById('modalOrderList').innerHTML = listHtml;
+        document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('detailModal').classList.add('hidden');
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('detailModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    }
+</script>
+</body>
+</html>

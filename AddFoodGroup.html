@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
-    <title>จัดการกลุ่มรายการอาหาร</title>
+    <title>เพิ่มกลุ่มรายการอาหาร - ลาบหนองบัวลำภู</title>
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS Client (CDN) -->
@@ -97,6 +97,24 @@
         </div>
     </div>
 
+    <!-- Modal ป๊อปอัปแจ้งเตือนสวยๆ (ทดแทน Alert เดิม) -->
+    <div id="customAlertModal" onclick="handleOutsideClick(event, 'customAlertModal')" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-5 text-center space-y-3">
+            <div id="alertIconContainer" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto text-2xl">
+                ⚠️
+            </div>
+            <div>
+                <h3 id="alertTitle" class="font-bold text-sm text-gray-800">แจ้งเตือน</h3>
+                <p id="alertMessageText" class="text-xs text-gray-600 mt-1 font-medium leading-relaxed"></p>
+            </div>
+            <div class="pt-1">
+                <button onclick="closeModal('customAlertModal')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-2xs cursor-pointer">
+                    ตกลง
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal ป๊อปอัปแก้ไขชื่อกลุ่มรายการอาหาร -->
     <div id="editCategoryModal" onclick="handleOutsideClick(event, 'editCategoryModal')" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-5 text-left space-y-4">
@@ -125,7 +143,7 @@
 
     <!-- Modal ป๊อปอัปยืนยันการลบกลุ่มรายการอาหาร -->
     <div id="deleteCategoryModal" onclick="handleOutsideClick(event, 'deleteCategoryModal')" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-5 text-center space-y-3 animate-in fade-in zoom-in duration-150">
+        <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-5 text-center space-y-3">
             <div class="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
                 ⚠️
             </div>
@@ -167,7 +185,7 @@
       window.addEventListener('DOMContentLoaded', async () => {
           const client = getDbClient();
           if (!client) {
-              alert('ไม่พบการเชื่อมต่อ Supabase ในไฟล์ key.js');
+              showAlertModal('ไม่พบการเชื่อมต่อ Supabase ในไฟล์ key.js', 'error');
               return;
           }
 
@@ -188,6 +206,31 @@
           if (event.target.id === modalId) {
               closeModal(modalId);
           }
+      }
+
+      // แสดง Custom Alert Modal สวยงามแทน alert()
+      function showAlertModal(message, type = 'warning') {
+          const iconContainer = document.getElementById('alertIconContainer');
+          const titleEl = document.getElementById('alertTitle');
+          const textEl = document.getElementById('alertMessageText');
+
+          textEl.textContent = message;
+
+          if (type === 'error') {
+              iconContainer.className = 'w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl';
+              iconContainer.textContent = '❌';
+              titleEl.textContent = 'เกิดข้อผิดพลาด';
+          } else if (type === 'success') {
+              iconContainer.className = 'w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl';
+              iconContainer.textContent = '✅';
+              titleEl.textContent = 'สำเร็จ';
+          } else {
+              iconContainer.className = 'w-12 h-12 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto text-2xl';
+              iconContainer.textContent = '⚠️';
+              titleEl.textContent = 'แจ้งเตือน';
+          }
+
+          openModal('customAlertModal');
       }
 
       // ดึงหมวดหมู่จากฐานข้อมูล
@@ -252,7 +295,7 @@
           const newName = document.getElementById('editCategoryNameInput').value.trim();
 
           if (!newName) {
-              alert('กรุณากรอกชื่อกลุ่มรายการ');
+              showAlertModal('กรุณากรอกชื่อกลุ่มรายการอาหาร', 'warning');
               return;
           }
 
@@ -267,7 +310,7 @@
               closeModal('editCategoryModal');
               await fetchCategories();
           } catch (err) {
-              alert('ไม่สามารถอัปเดตได้: ' + err.message);
+              showAlertModal('ไม่สามารถอัปเดตได้: ' + err.message, 'error');
           }
       }
 
@@ -275,7 +318,7 @@
       async function handleSaveCategoryAction() {
           const client = getDbClient();
           if (!client) {
-              alert('ไม่พบระบบเชื่อมต่อฐานข้อมูล');
+              showAlertModal('ไม่พบระบบเชื่อมต่อฐานข้อมูล', 'error');
               return;
           }
 
@@ -283,7 +326,7 @@
           const name = input.value.trim();
 
           if (!name) {
-              alert('กรุณากรอกชื่อกลุ่มรายการอาหาร');
+              showAlertModal('กรุณากรอกชื่อกลุ่มรายการอาหาร', 'warning');
               return;
           }
 
@@ -297,7 +340,7 @@
               input.value = '';
               await fetchCategories();
           } catch (err) {
-              alert('ไม่สามารถเพิ่มกลุ่มรายการได้: ' + err.message);
+              showAlertModal('ไม่สามารถเพิ่มกลุ่มรายการได้: ' + err.message, 'error');
           }
       }
 
@@ -325,7 +368,7 @@
               closeModal('deleteCategoryModal');
               await fetchCategories();
           } catch (err) {
-              alert('ไม่สามารถลบได้: ' + err.message);
+              showAlertModal('ไม่สามารถลบได้: ' + err.message, 'error');
           }
       }
     </script>

@@ -46,7 +46,7 @@
 
         .header-section {
             flex-shrink: 0;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
         .icon-top {
@@ -69,11 +69,11 @@
         .menu-list {
             display: flex;
             flex-direction: column;
-            justify-content: space-evenly;
+            justify-content: space-between;
             gap: 8px;
             width: 100%;
             flex: 1;
-            padding: 2px 0;
+            padding: 4px 0;
             box-sizing: border-box;
             overflow: hidden;
         }
@@ -82,11 +82,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
-            height: 65px;
+            gap: 6px;
+            flex: 1;
+            min-height: 52px;
             padding: 0 12px;
-            border-radius: 12px;
-            font-size: 18px;
+            border-radius: 14px;
+            font-size: 16px;
             font-weight: bold;
             color: white;
             text-decoration: none;
@@ -105,8 +106,8 @@
 
         .btn-price { background: #d97706; }
         .btn-mapping { background: #0d9488; }
-        .btn-sales { background: #059669; }
         .btn-password { background: #334155; }
+        .btn-editbill { background: #2563eb; }
         .btn-home { background: #ef4444; }
     </style>
 </head>
@@ -125,18 +126,22 @@
                 <a href="PriceEditor.html" class="menu-btn btn-price">
                     <span>📋 ดูแลและแก้ไขตารางราคา</span>
                 </a>
+                
                 <!-- 2. foodmapping -->
                 <a href="foodmapping.html" class="menu-btn btn-mapping">
                     <span>🔗 จัดการสูตรอาหาร & วัตถุดิบ</span>
                 </a>
-                <!-- 3. SalesReport -->
-                <a href="SalesReport.html" class="menu-btn btn-sales">
-                    <span>📊 สรุปยอดขาย & ประวัติออร์เดอร์</span>
-                </a>
-                <!-- 4. changepwd -->
+                
+                <!-- 3. changepwd -->
                 <a href="changepwd.html" class="menu-btn btn-password">
                     <span>🔑 เปลี่ยนรหัสผ่านแอดมิน</span>
                 </a>
+                
+                <!-- 4. EditBill (เพิ่มเข้ามาใหม่ - อันดับรองสุดท้าย) -->
+                <a href="EditBill.html" class="menu-btn btn-editbill">
+                    <span>📝 จัดการและแก้ไขบิล</span>
+                </a>
+                
                 <!-- 5. index -->
                 <a href="index.html" class="menu-btn btn-home">
                     <span>🏠 กลับหน้าหลัก</span>
