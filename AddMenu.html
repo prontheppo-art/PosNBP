@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <title>เพิ่มรายการอาหาร - ลาบหนองบัวลำภู</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            font-family: sans-serif; 
+            background: #f3f4f6; 
+            touch-action: pan-y; 
+            -webkit-text-size-adjust: 100%;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .app-layout {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100dvh;
+            width: 100vw;
+            box-sizing: border-box;
+            padding: 16px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="app-layout">
+        <!-- การ์ดฟอร์มหลัก -->
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 text-left space-y-4 border border-gray-100 relative">
+            
+            <!-- หัวข้อหน้า -->
+            <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h3 class="font-extrabold text-base text-gray-800 flex items-center gap-2">
+                    <span>🍱</span> เพิ่มรายการอาหาร
+                </h3>
+                <a href="javascript:history.back()" class="text-gray-400 hover:text-gray-600 text-base font-bold no-underline">✕</a>
+            </div>
+            
+            <!-- ส่วนเลือกหมวดหมู่ แบบปุ่ม Tag เหมือนในรูปภาพ -->
+            <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-gray-600">📂 เลือกหมวดหมู่อาหาร:</label>
+                <div id="categoryContainer" class="flex flex-wrap gap-2 max-h-48 overflow-y-auto py-1 pr-1">
+                    <div class="text-center w-full text-xs text-gray-400 py-4">⏳ กำลังโหลดหมวดหมู่...</div>
+                </div>
+            </div>
+
+            <!-- ฟอร์มกรอกชื่อและราคา -->
+            <div class="space-y-3 pt-1 border-t border-gray-100">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">ชื่อรายการอาหาร:</label>
+                    <input type="text" id="addFoodNameInput" placeholder="เช่น ตำป่า / ลาบหมู" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-xs outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 font-medium text-gray-800 transition">
+                </div>
+
+                <!-- ราคา 3 ระดับ -->
+                <div class="grid grid-cols-3 gap-2 pt-1">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1 text-center">ชาวบ้าน</label>
+                        <input type="number" id="addFoodPrice1Input" placeholder="0" class="w-full border border-gray-300 rounded-xl py-2 px-1 text-center text-xs font-bold text-gray-700 outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 transition">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1 text-center">นักท่องเที่ยว</label>
+                        <input type="number" id="addFoodPrice2Input" placeholder="0" class="w-full border border-gray-300 rounded-xl py-2 px-1 text-center text-xs font-bold text-gray-700 outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 transition">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1 text-center">สบายดี</label>
+                        <input type="number" id="addFoodPrice3Input" placeholder="0" class="w-full border border-gray-300 rounded-xl py-2 px-1 text-center text-xs font-bold text-gray-700 outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 transition">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ปุ่มดำเนินการ -->
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button type="button" onclick="handleCancel()" class="bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-600 font-bold py-3 rounded-xl text-xs transition cursor-pointer text-center">
+                    ยกเลิก
+                </button>
+                <button type="button" onclick="handleSaveNewFood()" id="saveBtn" class="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold py-3 rounded-xl text-xs transition shadow-md cursor-pointer text-center">
+                    บันทึก
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="key.js"></script>
+    <script>
+        document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+        document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
+        document.addEventListener('gestureend', function (e) { e.preventDefault(); }, { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+
+        let db;
+        let foodGroupsData = [];
+        let selectedGroupId = null;
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (typeof window.supabaseClient !== 'undefined') {
+                db = window.supabaseClient;
+            } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
+                db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+
+            if (db) {
+                await fetchFoodGroups();
+            } else {
+                alert('❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ (โปรดตรวจสอบไฟล์ key.js)');
+            }
+        });
+
+        // ดึงข้อมูลหมวดหมู่จาก Supabase
+        async function fetchFoodGroups() {
+            try {
+                const { data, error } = await db.from('food_groups').select('*').order('id', { ascending: true });
+                if (error) throw error;
+
+                foodGroupsData = data || [];
+
+                // ตรวจสอบ Parameter จาก URL หากส่ง groupId มา
+                const urlParams = new URLSearchParams(window.location.search);
+                const defaultGroupId = urlParams.get('groupId');
+                if (defaultGroupId) {
+                    const found = foodGroupsData.find(g => String(g.id) === String(defaultGroupId));
+                    if (found) {
+                        selectedGroupId = found.id;
+                    }
+                }
+
+                renderCategoryButtons();
+            } catch (err) {
+                console.error("Error loading categories:", err);
+                document.getElementById('categoryContainer').innerHTML = `<div class="text-center w-full text-xs text-red-500 font-bold py-2">เกิดข้อผิดพลาดในการโหลดหมวดหมู่</div>`;
+            }
+        }
+
+        // วาดปุ่มหมวดหมู่เป็นสไตล์ Tag (Pills)
+        function renderCategoryButtons() {
+            const container = document.getElementById('categoryContainer');
+            if (foodGroupsData.length === 0) {
+                container.innerHTML = `<div class="text-center w-full text-xs text-gray-400 py-2">ไม่พบหมวดหมู่</div>`;
+                return;
+            }
+
+            let html = '';
+            foodGroupsData.forEach((group, index) => {
+                const isSelected = String(selectedGroupId) === String(group.id);
+                // สไตล์ปุ่มแบบในรูปภาพ (ขาว ขอบมน เทา) และไฮไลต์เมื่อเลือก (เขียว)
+                const baseClass = "px-4 py-2.5 rounded-2xl text-xs font-bold transition shadow-2xs border text-center cursor-pointer active:scale-95";
+                const activeClass = isSelected 
+                    ? "bg-emerald-500 text-white border-emerald-600 shadow-md" 
+                    : "bg-white text-slate-700 border-gray-200 hover:bg-gray-50";
+
+                // กรณีหมวดสุดท้ายให้ขยายเต็มแถวถ้าต้องการ (เช่น ลูกค้าฝากซื้อ ในรูป)
+                const isLast = index === foodGroupsData.length - 1 && foodGroupsData.length % 2 !== 0;
+                const flexStyle = isLast ? "flex-1 min-w-[100%]" : "flex-1 min-w-[45%]";
+
+                html += `
+                    <button type="button" onclick="selectCategory('${group.id}')" class="${baseClass} ${activeClass} ${flexStyle}">
+                        ${group.name}
+                    </button>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function selectCategory(id) {
+            selectedGroupId = id;
+            renderCategoryButtons();
+        }
+
+        // บันทึกรายการอาหาร
+        async function handleSaveNewFood() {
+            const name = document.getElementById('addFoodNameInput').value.trim();
+            const p1 = parseFloat(document.getElementById('addFoodPrice1Input').value) || 0;
+            const p2 = parseFloat(document.getElementById('addFoodPrice2Input').value) || 0;
+            const p3 = parseFloat(document.getElementById('addFoodPrice3Input').value) || 0;
+
+            if (!selectedGroupId) {
+                alert('กรุณาคลิกเลือกหมวดหมู่อาหาร');
+                return;
+            }
+
+            if (!name) {
+                alert('กรุณากรอกชื่อรายการอาหาร');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ กำลังบันทึก...';
+
+            try {
+                const newFoodItem = {
+                    name: name,
+                    group_id: parseInt(selectedGroupId),
+                    requires_stock: true,
+                    price_1: p1,
+                    price_2: p2,
+                    price_3: p3
+                };
+
+                const { error } = await db.from('foods').insert([newFoodItem]);
+
+                if (error) throw error;
+
+                alert('✅ บันทึกรายการอาหารเรียบร้อยแล้ว');
+                if (document.referrer) {
+                    window.location.href = document.referrer;
+                } else {
+                    window.history.back();
+                }
+            } catch (err) {
+                alert('❌ ไม่สามารถเพิ่มรายการอาหารได้: ' + err.message);
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'บันทึก';
+            }
+        }
+
+        function handleCancel() {
+            if (document.referrer) {
+                window.location.href = document.referrer;
+            } else {
+                window.history.back();
+            }
+        }
+    </script>
+</body>
+</html>

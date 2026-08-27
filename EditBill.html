@@ -150,6 +150,9 @@
             }
             
             let notes = [];
+            if (item.is_custom_price && Number(item.custom_price) > 0) {
+                notes.push(`⭐ ราคาพิเศษ ${item.custom_price}.-`);
+            }
             if (item.fried_egg > 0) notes.push(`ไข่ดาว +${item.fried_egg}`);
             if (item.omelet > 0) notes.push(`ไข่เจียว +${item.omelet}`);
             if (item.note && item.note.trim()) notes.push(item.note.trim());
@@ -170,9 +173,8 @@
             });
         }
 
-        /* 🌟 ระบบรับและคำนวณข้อมูลจาก Confirm Order */
+        /* 🌟 ระบบรับและคำนวณข้อมูลจาก Confirm Order (รองรับ Custom Price) */
         function loadPendingOrderData() {
-            // ดึงข้อมูลจาก key 'pendingOrder' (จาก Confirm Order) หรือ fallback เป็น 'pendingOrderData'
             const rawPending = localStorage.getItem('pendingOrder') || localStorage.getItem('pendingOrderData');
             const rawCart = localStorage.getItem('cart');
 
@@ -180,7 +182,6 @@
                 try {
                     const parsed = JSON.parse(rawPending);
                     
-                    // กรณีเป็นแพ็กเกจโครงสร้างใหม่จาก Confirm Order
                     if (parsed.cart && Array.isArray(parsed.cart)) {
                         const groupId = Number(parsed.groupId) || 1;
                         let processedItems = [];
@@ -189,11 +190,15 @@
                         parsed.cart.forEach(item => {
                             const q = Number(item.qty || 1);
                             
-                            // คำนวณราคาตามกลุ่มลูกค้า
+                            // ตรวจสอบระบบราคาพิเศษ (Custom Price) ก่อนเป็นอันดับแรก
                             let basePrice = 0;
-                            if (groupId === 1) basePrice = Number(item.price_1 || item.price || 0);
-                            else if (groupId === 2) basePrice = Number(item.price_2 || item.price || 0);
-                            else if (groupId === 3) basePrice = Number(item.price_3 || item.price || 0);
+                            if (item.is_custom_price && Number(item.custom_price) > 0) {
+                                basePrice = Number(item.custom_price);
+                            } else {
+                                if (groupId === 1) basePrice = Number(item.price_1 || item.price || 0);
+                                else if (groupId === 2) basePrice = Number(item.price_2 || item.price || 0);
+                                else if (groupId === 3) basePrice = Number(item.price_3 || item.price || 0);
+                            }
 
                             const eggCost = (Number(item.fried_egg) || 0) * 10;
                             const omeletCost = (Number(item.omelet) || 0) * 10;
@@ -236,7 +241,6 @@
                             created_at: parsed.createdAt || new Date().toISOString()
                         };
                     } else {
-                        // โครงสร้างเดิม
                         currentPendingPayload = parsed;
                     }
                 } catch (err) {
@@ -244,7 +248,7 @@
                 }
             }
 
-            // Fallback กรณีไม่มี pendingOrder ให้ดึงจาก cart ใน LocalStorage
+            // Fallback กรณีดึงตรงจาก cart
             if (!currentPendingPayload || !currentPendingPayload.items || currentPendingPayload.items.length === 0) {
                 let items = [];
                 if (rawCart) {

@@ -91,54 +91,6 @@
         </div>
     </div>
 
-    <!-- Modal ป๊อปอัปเพิ่มรายการอาหาร -->
-    <div id="addFoodModal" onclick="handleOutsideClick(event, 'addFoodModal')" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-5 text-left space-y-4">
-            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
-                <h3 class="font-bold text-sm text-gray-800 flex items-center gap-1.5">
-                    <span>🍱</span> เพิ่มรายการอาหาร
-                </h3>
-                <button onclick="closeModal('addFoodModal')" class="text-gray-400 hover:text-gray-600 text-sm font-bold cursor-pointer">✕</button>
-            </div>
-            
-            <div class="bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1">
-                <span>📂 หมวดหมู่:</span>
-                <span id="targetCategoryNameDisplay" class="truncate">...</span>
-            </div>
-
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-[11px] font-bold text-gray-600 mb-1">ชื่อรายการอาหาร:</label>
-                    <input type="text" id="addFoodNameInput" placeholder="เช่น ตำป่า / ลาบหมู" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 font-medium text-gray-800 transition">
-                </div>
-
-                <div class="grid grid-cols-3 gap-2">
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-600 mb-1 text-center">ชาวบ้าน</label>
-                        <input type="number" id="addFoodPrice1Input" placeholder="0" class="w-full border border-gray-300 rounded-xl py-2 px-1 text-center text-xs font-bold text-gray-700 outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 transition">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-600 mb-1 text-center">นักท่องเที่ยว</label>
-                        <input type="number" id="addFoodPrice2Input" placeholder="0" class="w-full border border-gray-300 rounded-xl py-2 px-1 text-center text-xs font-bold text-gray-700 outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 transition">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-600 mb-1 text-center">สบายดี</label>
-                        <input type="number" id="addFoodPrice3Input" placeholder="0" class="w-full border border-gray-300 rounded-xl py-2 px-1 text-center text-xs font-bold text-gray-700 outline-none bg-gray-50 focus:bg-white focus:border-emerald-500 transition">
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2 pt-1">
-                <button onclick="closeModal('addFoodModal')" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
-                    ยกเลิก
-                </button>
-                <button onclick="handleSaveNewFood()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-2xs cursor-pointer">
-                    บันทึก
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script src="key.js"></script>
     <script>
         document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
@@ -164,7 +116,6 @@
         let menus = [];
         let foodGroups = []; 
         let currentSelectedCategory = 'all';
-        let targetAddGroupId = null;
 
         window.addEventListener('DOMContentLoaded', async () => {
             if (typeof window.supabaseClient !== 'undefined') {
@@ -187,27 +138,6 @@
                 }
             });
         });
-
-        function openModal(id) {
-            document.getElementById(id)?.classList.remove('hidden');
-        }
-
-        function closeModal(id) {
-            document.getElementById(id)?.classList.add('hidden');
-            if (id === 'addFoodModal') {
-                targetAddGroupId = null;
-                document.getElementById('addFoodNameInput').value = '';
-                document.getElementById('addFoodPrice1Input').value = '';
-                document.getElementById('addFoodPrice2Input').value = '';
-                document.getElementById('addFoodPrice3Input').value = '';
-            }
-        }
-
-        function handleOutsideClick(event, modalId) {
-            if (event.target.id === modalId) {
-                closeModal(modalId);
-            }
-        }
 
         async function loadAllData() {
             try {
@@ -330,11 +260,17 @@
                 allTablesHtml += `
                     <div class="category-card">
                         <div class="bg-slate-700 text-white font-bold py-2 px-3 text-xs flex items-center justify-between shrink-0 z-20">
-                            <span class="truncate flex items-center gap-1.5">📁 หมวดหมู่: ${currentCat.name}</span>
-                            <button onclick="openAddFoodModal('${currentCat.id}', '${currentCat.name.replace(/'/g, "\\'")}')" 
-                                    class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-xs flex items-center gap-1 shrink-0 cursor-pointer">
-                                ➕ เมนู
-                            </button>
+                            <span class="truncate flex items-center gap-1.5">📁 ${currentCat.name}</span>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <a href="AddFoodGroup.html" 
+                                   class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs transition shadow-xs flex items-center gap-1 no-underline">
+                                    ➕ กลุ่มอาหาร
+                                </a>
+                                <a href="AddMenu.html?groupId=${currentCat.id}" 
+                                   class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs transition shadow-xs flex items-center gap-1 no-underline">
+                                    ➕ เมนู
+                                </a>
+                            </div>
                         </div>
                         
                         <div class="card-body-scroll">
@@ -362,51 +298,6 @@
             }
 
             container.innerHTML = allTablesHtml;
-        }
-
-        function openAddFoodModal(groupId, groupName) {
-            targetAddGroupId = groupId;
-            document.getElementById('targetCategoryNameDisplay').textContent = groupName;
-            document.getElementById('addFoodNameInput').value = '';
-            document.getElementById('addFoodPrice1Input').value = '';
-            document.getElementById('addFoodPrice2Input').value = '';
-            document.getElementById('addFoodPrice3Input').value = '';
-            openModal('addFoodModal');
-        }
-
-        async function handleSaveNewFood() {
-            if (!targetAddGroupId) return;
-
-            const name = document.getElementById('addFoodNameInput').value.trim();
-            const p1 = parseFloat(document.getElementById('addFoodPrice1Input').value) || 0;
-            const p2 = parseFloat(document.getElementById('addFoodPrice2Input').value) || 0;
-            const p3 = parseFloat(document.getElementById('addFoodPrice3Input').value) || 0;
-
-            if (!name) {
-                alert('กรุณากรอกชื่อรายการอาหาร');
-                return;
-            }
-
-            try {
-                const newFoodItem = {
-                    name: name,
-                    group_id: targetAddGroupId,
-                    price_1: p1,
-                    price_2: p2,
-                    price_3: p3
-                };
-
-                const { data, error } = await db.from('foods')
-                    .insert([newFoodItem])
-                    .select();
-
-                if (error) throw error;
-
-                closeModal('addFoodModal');
-                await loadAllData();
-            } catch (err) {
-                alert('ไม่สามารถเพิ่มรายการอาหารได้: ' + err.message);
-            }
         }
 
         async function updatePriceDirect(foodId, priceColumn, newPrice) {
