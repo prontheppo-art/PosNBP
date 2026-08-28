@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ดูแลและแก้ไขตารางราคา - ลาบหนองบัวลำภู</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            font-family: sans-serif; 
+            background: #f3f4f6; 
+            touch-action: pan-y; 
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        .app-layout {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100dvh;
+            width: 100vw;
+            box-sizing: border-box;
+            padding: 8px;
+            overflow: hidden;
+        }
+
+        .category-nav-wrap {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.5rem;
+            padding: 0.5rem;
+            width: 100%;
+        }
+
+        .cat-nav-btn {
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            color: #1e293b;
+            font-size: 0.85rem;
+            font-weight: 700;
+            padding: 0.65rem 0.4rem;
+            border-radius: 0.85rem;
+            text-align: center;
+            white-space: nowrap;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            cursor: pointer;
+            min-height: 48px;
+        }
+
+        .cat-nav-btn:active {
+            background-color: #10b981;
+            color: #ffffff;
+            border-color: #10b981;
+            transform: scale(0.96);
+        }
+
+        .cat-nav-icon {
+            font-size: 1.1rem;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="app-layout">
+        <div class="w-[97%] max-w-xl bg-white rounded-3xl shadow-xl p-4 sm:p-6 h-[92vh] flex flex-col relative overflow-hidden">
+            
+            <!-- ส่วนหัวหลักด้านบนสุด -->
+            <div class="shrink-0 bg-white pb-2 relative z-20">
+                <h2 class="text-xl font-bold text-gray-800 text-center mb-1">🏷️ ดูแลและแก้ไขตารางราคา</h2>
+                <p class="text-xs text-slate-500 text-center mb-2">แตะที่หมวดหมู่เพื่อเปิด Pop-up แก้ไขราคา</p>
+            </div>
+
+            <!-- แถบปุ่มกดเลือกหมวดหมู่ (มีแค่วงสีแดง เต็มพื้นที่กลางจอ) -->
+            <div class="flex-1 overflow-y-auto pr-0.5 rounded-2xl">
+                <div id="quickNavContainer" class="category-nav-wrap border border-slate-200 rounded-2xl bg-slate-50">
+                    <div class="text-center col-span-2 text-xs text-slate-400 py-8">⏳ กำลังโหลดหมวดหมู่...</div>
+                </div>
+            </div>
+
+            <!-- แถบปุ่มกดด้านล่าง -->
+            <div class="shrink-0 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2 z-20 bg-white mt-2">
+                <a href="AddFoodGroup.html" 
+                   class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold py-3 px-2 rounded-2xl text-xs flex items-center justify-center gap-1 shadow-sm no-underline text-center">
+                    ➕ กลุ่มอาหาร
+                </a>
+                <a href="PageAdmin.html" 
+                   class="bg-slate-700 hover:bg-slate-800 active:bg-slate-900 text-white font-bold py-3 px-2 rounded-2xl text-xs flex items-center justify-center gap-1 shadow-sm no-underline text-center">
+                    🔑 ผู้ดูแล
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ดึงไฟล์คีย์ Supabase และไฟล์ Pop-up ทั้ง 2 ตัวมาใช้งาน -->
+    <script src="key.js"></script>
+    <script src="FoodGroupPopup.js"></script>
+    <script src="PriceEditPopup.js"></script>
+
+    <script>
+        let db;
+        let menus = [];
+        let foodGroups = []; 
+        const categoryIcons = ['🍱', '🍲', '🍳', '🍚', '🥩', '⭐', '🥗', '🛍️', '🍽️', '🥢', '🍹'];
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (typeof window.supabaseClient !== 'undefined') {
+                db = window.supabaseClient;
+            } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
+                db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+
+            if (db) {
+                await loadAllData();
+            } else {
+                document.getElementById('quickNavContainer').innerHTML = `<div class="text-center col-span-2 text-red-500 text-xs py-8">❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ (โปรดตรวจสอบ key.js)</div>`;
+            }
+        });
+
+        // โหลดข้อมูลอาหารและกลุ่มอาหารจาก Supabase
+        async function loadAllData() {
+            try {
+                const [ { data: mData }, { data: fgData } ] = await Promise.all([
+                    db.from('foods').select('*'),
+                    db.from('food_groups').select('*').order('name', { ascending: true })
+                ]);
+
+                menus = mData || [];
+                foodGroups = fgData || [];
+
+                if (foodGroups.length === 0 && menus.length > 0) {
+                    const uniqueCats = [...new Set(menus.map(m => m.group_id).filter(Boolean))];
+                    foodGroups = uniqueCats.map((cat) => ({ id: cat, name: `กลุ่ม ${cat}` }));
+                }
+
+                renderQuickNav();
+            } catch (err) {
+                console.error("Error loading price editor data:", err);
+                document.getElementById('quickNavContainer').innerHTML = `<div class="text-center col-span-2 text-red-500 text-xs py-8">เกิดข้อผิดพลาดในการโหลดข้อมูล: ${err.message}</div>`;
+            }
+        }
+
+        // แสดงปุ่มหมวดหมู่ 2 คอลัมน์
+        function renderQuickNav() {
+            const navContainer = document.getElementById('quickNavContainer');
+            if (!navContainer) return;
+            navContainer.innerHTML = '';
+
+            if (foodGroups.length === 0) {
+                navContainer.innerHTML = `<div class="text-center col-span-2 text-slate-400 text-xs py-8">ยังไม่มีหมวดหมู่อาหาร</div>`;
+                return;
+            }
+
+            foodGroups.forEach((cat, index) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `cat-nav-btn`;
+                
+                const icon = categoryIcons[index % categoryIcons.length];
+                btn.innerHTML = `<span class="cat-nav-icon">${icon}</span> <span class="truncate">${cat.name}</span>`;
+                
+                // สั่งเปิด Pop-up แก้ไขราคาจากไฟล์ PriceEditPopup.js
+                btn.onclick = () => openCategoryPriceModal(cat);
+                navContainer.appendChild(btn);
+            });
+        }
+
+        // เรียกเปิด Pop-up แสดงตารางราคาของหมวดหมู่ที่เลือก
+        function openCategoryPriceModal(category) {
+            const categoryMenus = menus.filter(m => String(m.group_id) === String(category.id));
+
+            if (typeof PriceEditPopup !== 'undefined') {
+                PriceEditPopup.open({
+                    category: category,
+                    menus: categoryMenus,
+                    onSavePrice: updatePriceDirect,
+                    onChangeCategory: openChangeCategoryModal
+                });
+            } else {
+                alert('ไม่พบไฟล์ PriceEditPopup.js กรุณาตรวจสอบการดึงไฟล์ในโฟลเดอร์');
+            }
+        }
+
+        // Pop-up ย้ายหมวดหมู่อาหาร (เมื่อกดที่ชื่ออาหารใน Pop-up แก้ไขราคา)
+        function openChangeCategoryModal(foodId) {
+            const foodItem = menus.find(m => String(m.id) === String(foodId));
+            if (!foodItem) return;
+
+            if (typeof FoodGroupPopup !== 'undefined') {
+                FoodGroupPopup.open({
+                    title: '📂 ย้ายกลุ่มหมวดหมู่',
+                    subtitle: `รายการอาหาร: <b class="text-blue-600 font-bold">${foodItem.name}</b>`,
+                    categories: foodGroups,
+                    selectedId: foodItem.group_id,
+                    includeAllOption: false,
+                    onSelect: async (selected) => {
+                        if (String(foodItem.group_id) === String(selected.id)) return;
+
+                        try {
+                            const { error } = await db.from('foods')
+                                .update({ group_id: parseInt(selected.id) || selected.id })
+                                .eq('id', parseInt(foodId));
+
+                            if (error) {
+                                alert('เกิดข้อผิดพลาดในการย้ายหมวดหมู่: ' + error.message);
+                            } else {
+                                foodItem.group_id = selected.id;
+                                
+                                // รีเฟรช Pop-up แก้ไขราคาใหม่
+                                const popupOverlay = document.getElementById('price-edit-popup-overlay');
+                                if (popupOverlay) popupOverlay.remove();
+                                
+                                const currentCat = foodGroups.find(g => String(g.id) === String(selected.id));
+                                if (currentCat) {
+                                    openCategoryPriceModal(currentCat);
+                                }
+                            }
+                        } catch (err) {
+                            console.error("Exception on saveNewCategory:", err);
+                            alert("เกิดข้อผิดพลาด: " + err.message);
+                        }
+                    }
+                });
+            }
+        }
+
+        // บันทึกราคาลง Supabase ทันทีที่มีการแก้ไขตัวเลขในช่องราคา
+        async function updatePriceDirect(foodId, priceColumn, newPrice) {
+            const parsedPrice = newPrice === '' ? 0 : parseFloat(newPrice);
+            
+            const item = menus.find(m => String(m.id) === String(foodId));
+            if (item) {
+                item[priceColumn] = parsedPrice;
+            }
+
+            try {
+                const updateData = {};
+                updateData[priceColumn] = parsedPrice;
+
+                const { error } = await db.from('foods')
+                    .update(updateData)
+                    .eq('id', parseInt(foodId));
+
+                if (error) {
+                    console.error(`❌ บันทึก ${priceColumn} ไม่สำเร็จ:`, error.message);
+                    alert(`เกิดข้อผิดพลาดในการบันทึก: ${error.message}`);
+                }
+            } catch (err) {
+                console.error("Exception on updatePriceDirect:", err);
+            }
+        }
+    </script>
+</body>
+</html>

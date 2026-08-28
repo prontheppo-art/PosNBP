@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ดูแลและแก้ไขตารางราคา - ลาบหนองบัวลำภู</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            font-family: sans-serif; 
+            background: #f3f4f6; 
+            touch-action: pan-y; 
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        .app-layout {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100dvh;
+            width: 100vw;
+            box-sizing: border-box;
+            padding: 8px;
+            overflow: hidden;
+        }
+
+        .category-nav-wrap {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.5rem;
+            padding: 0.5rem;
+            width: 100%;
+        }
+
+        .cat-nav-btn {
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            color: #1e293b;
+            font-size: 0.85rem;
+            font-weight: 700;
+            padding: 0.65rem 0.4rem;
+            border-radius: 0.85rem;
+            text-align: center;
+            white-space: nowrap;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            cursor: pointer;
+            min-height: 48px;
+        }
+
+        .cat-nav-btn:active {
+            background-color: #10b981;
+            color: #ffffff;
+            border-color: #10b981;
+            transform: scale(0.96);
+        }
+
+        .cat-nav-icon {
+            font-size: 1.1rem;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .cat-select-card {
+            background-color: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            color: #334155;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 0.6rem 0.3rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.3rem;
+            cursor: pointer;
+        }
+
+        .cat-select-card.selected {
+            background-color: #eff6ff;
+            border-color: #2563eb;
+            color: #1d4ed8;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="app-layout">
+        <div class="w-[97%] max-w-xl bg-white rounded-3xl shadow-xl p-4 sm:p-6 h-[92vh] flex flex-col relative overflow-hidden">
+            
+            <!-- Header -->
+            <div class="shrink-0 bg-white pb-2 relative z-20">
+                <h2 class="text-xl font-bold text-gray-800 text-center mb-1">🏷️ ดูแลและแก้ไขตารางราคา</h2>
+                <p class="text-xs text-slate-500 text-center mb-2">แตะที่กลุ่มอาหารเพื่อเปิดแก้ไขราคา</p>
+            </div>
+
+            <!-- Categories Grid -->
+            <div class="flex-1 overflow-y-auto pr-0.5 rounded-2xl">
+                <div id="quickNavContainer" class="category-nav-wrap border border-slate-200 rounded-2xl bg-slate-50">
+                    <div class="text-center col-span-2 text-xs text-slate-400 py-8">⏳ กำลังโหลดหมวดหมู่...</div>
+                </div>
+            </div>
+
+            <!-- Footer Navigation -->
+            <div class="shrink-0 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2 z-20 bg-white mt-2">
+                <a href="ManageFoodGroups.html" 
+                   class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold py-3 px-2 rounded-2xl text-xs flex items-center justify-center gap-1 shadow-sm no-underline text-center">
+                    ➕ กลุ่มอาหาร
+                </a>
+                <a href="PageAdmin.html" 
+                   class="bg-slate-700 hover:bg-slate-800 active:bg-slate-900 text-white font-bold py-3 px-2 rounded-2xl text-xs flex items-center justify-center gap-1 shadow-sm no-underline text-center">
+                    🔑 ผู้ดูแล
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- External JS Files -->
+    <script src="key.js"></script>
+    <script src="ManageMenuPopup.js"></script>
+    <script src="ManageCategoryPopup.js"></script>
+    <script>
+        let db;
+        let menus = [];
+        let foodGroups = []; 
+        const categoryIcons = ['🍱', '🍲', '🍳', '🍚', '🥩', '⭐', '🥗', '🛍️', '🍽️', '🥢', '🍹'];
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (typeof window.supabaseClient !== 'undefined') {
+                db = window.supabaseClient;
+            } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
+                db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+
+            if (db) {
+                ManageMenuPopup.init(db);
+                ManageCategoryPopup.init(db, () => {
+                    ManageMenuPopup.refreshActiveModal();
+                });
+                await loadAllData();
+            } else {
+                document.getElementById('quickNavContainer').innerHTML = `<div class="text-center col-span-2 text-red-500 text-xs py-8">❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ (โปรดตรวจสอบ key.js)</div>`;
+            }
+        });
+
+        async function loadAllData() {
+            try {
+                const [ { data: mData }, { data: fgData } ] = await Promise.all([
+                    db.from('foods').select('*'),
+                    db.from('food_groups').select('*').order('name', { ascending: true })
+                ]);
+
+                menus = mData || [];
+                foodGroups = fgData || [];
+
+                if (foodGroups.length === 0 && menus.length > 0) {
+                    const uniqueCats = [...new Set(menus.map(m => m.group_id).filter(Boolean))];
+                    foodGroups = uniqueCats.map((cat) => ({ id: cat, name: `กลุ่ม ${cat}` }));
+                }
+
+                ManageMenuPopup.updateData(menus, foodGroups);
+                ManageCategoryPopup.updateData(menus, foodGroups);
+                renderQuickNav();
+            } catch (err) {
+                console.error("Error loading price editor data:", err);
+                document.getElementById('quickNavContainer').innerHTML = `<div class="text-center col-span-2 text-red-500 text-xs py-8">เกิดข้อผิดพลาดในการโหลดข้อมูล: ${err.message}</div>`;
+            }
+        }
+
+        function renderQuickNav() {
+            const navContainer = document.getElementById('quickNavContainer');
+            if (!navContainer) return;
+            navContainer.innerHTML = '';
+
+            if (foodGroups.length === 0) {
+                navContainer.innerHTML = `<div class="text-center col-span-2 text-slate-400 text-xs py-8">ยังไม่มีหมวดหมู่อาหาร</div>`;
+                return;
+            }
+
+            foodGroups.forEach((cat, index) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `cat-nav-btn`;
+                
+                const icon = categoryIcons[index % categoryIcons.length];
+                btn.innerHTML = `<span class="cat-nav-icon">${icon}</span> <span class="truncate">${cat.name}</span>`;
+                btn.onclick = () => ManageMenuPopup.openCategoryPriceModal(cat);
+                navContainer.appendChild(btn);
+            });
+        }
+    </script>
+</body>
+</html>

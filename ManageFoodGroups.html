@@ -89,15 +89,15 @@
             </div>
         </div>
 
-        <!-- ปุ่มล่างสุด กลับหน้าแก้ไขราคา (Footer) -->
+        <!-- ปุ่มล่างสุด กลับหน้า PageAdmin.html -->
         <div class="footer-section pt-2 border-t border-gray-100">
-            <a href="EditPriceTable.html" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-2xl text-xs text-center transition flex items-center justify-center gap-1 shadow-md no-underline">
-                🏷️ กลับหน้าแก้ไขราคา
+            <a href="PageAdmin.html" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-2xl text-xs text-center transition flex items-center justify-center gap-1 shadow-md no-underline">
+                🔑 กลับหน้า Admin
             </a>
         </div>
     </div>
 
-    <!-- Modal ป๊อปอัปแจ้งเตือนสวยๆ (ทดแทน Alert เดิม) -->
+    <!-- Modal ป๊อปอัปแจ้งเตือน -->
     <div id="customAlertModal" onclick="handleOutsideClick(event, 'customAlertModal')" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-5 text-center space-y-3">
             <div id="alertIconContainer" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto text-2xl">
@@ -208,7 +208,6 @@
           }
       }
 
-      // แสดง Custom Alert Modal สวยงามแทน alert()
       function showAlertModal(message, type = 'warning') {
           const iconContainer = document.getElementById('alertIconContainer');
           const titleEl = document.getElementById('alertTitle');
@@ -233,7 +232,6 @@
           openModal('customAlertModal');
       }
 
-      // ดึงหมวดหมู่จากฐานข้อมูล
       async function fetchCategories() {
           const container = document.getElementById('categoryListContainer');
           const client = getDbClient();
@@ -257,7 +255,6 @@
           }
       }
 
-      // แสดงรายการหมวดหมู่
       function renderCategoryList() {
           const container = document.getElementById('categoryListContainer');
           if (!container) return;
@@ -279,14 +276,12 @@
           `).join('');
       }
 
-      // เปิด Modal แก้ไขชื่อหมวดหมู่
       function openEditCategoryModal(id, currentName) {
           activeEditingCategoryId = id;
           document.getElementById('editCategoryNameInput').value = currentName;
           openModal('editCategoryModal');
       }
 
-      // บันทึกการแก้ไขชื่อหมวดหมู่ลง Supabase
       async function handleUpdateCategory() {
           if (!activeEditingCategoryId) return;
           const client = getDbClient();
@@ -314,7 +309,6 @@
           }
       }
 
-      // เพิ่มหมวดหมู่ใหม่
       async function handleSaveCategoryAction() {
           const client = getDbClient();
           if (!client) {
@@ -344,14 +338,12 @@
           }
       }
 
-      // เปิด Modal ลบกลุ่มรายการ
       function openDeleteCategoryModal(id, name) {
           activeDeletingCategoryId = id;
           document.getElementById('deleteTargetCategoryName').textContent = `"${name}"`;
           openModal('deleteCategoryModal');
       }
 
-      // บันทึกการลบหลังจากยืนยันใน Modal
       async function confirmExecuteDeleteCategory() {
           if (!activeDeletingCategoryId) return;
           const client = getDbClient();

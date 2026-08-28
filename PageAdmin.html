@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ผู้ดูแลระบบ - ลาบหนองบัวลำภู</title>
     <style>
         html, body {
@@ -14,6 +14,8 @@
             background: #f3f4f6;
             touch-action: pan-y;
             -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
 
         .app-layout {
@@ -50,7 +52,7 @@
         }
 
         .icon-top {
-            font-size: 26px;
+            font-size: 28px;
             margin-bottom: 2px;
         }
 
@@ -84,15 +86,15 @@
             justify-content: center;
             gap: 6px;
             flex: 1;
-            min-height: 52px;
+            min-height: 48px;
             padding: 0 12px;
             border-radius: 14px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             color: white;
             text-decoration: none;
             box-shadow: 0 3px 8px rgba(0,0,0,0.06);
-            transition: transform 0.1s ease;
+            transition: transform 0.1s ease, filter 0.15s ease;
             box-sizing: border-box;
             width: 100%;
             white-space: nowrap;
@@ -102,9 +104,11 @@
 
         .menu-btn:active {
             transform: scale(0.98);
+            filter: brightness(0.9);
         }
 
         .btn-price { background: #d97706; }
+        .btn-group { background: #f59e0b; }
         .btn-mapping { background: #0d9488; }
         .btn-password { background: #334155; }
         .btn-editbill { background: #2563eb; }
@@ -122,27 +126,32 @@
             </div>
 
             <div class="menu-list">
-                <!-- 1. PriceEditor -->
-                <a href="EditPriceTable.html" class="menu-btn btn-price">
-                    <span>📋 ดูแลและแก้ไขตารางราคา</span>
+                <!-- 1. จัดการรายการอาหาร & ราคา (ลิงก์ไปยัง ManageMenu.html) -->
+                <a href="ManageMenu.html" class="menu-btn btn-price">
+                    <span>📋 จัดการรายการอาหาร & ราคา</span>
+                </a>
+
+                <!-- 2. จัดการกลุ่มอาหาร -->
+                <a href="ManageFoodGroups.html" class="menu-btn btn-group">
+                    <span>📁 จัดการกลุ่มอาหาร</span>
                 </a>
                 
-                <!-- 2. foodmapping -->
+                <!-- 3. จัดการสูตรอาหาร & วัตถุดิบ -->
                 <a href="foodmapping.html" class="menu-btn btn-mapping">
                     <span>🔗 จัดการสูตรอาหาร & วัตถุดิบ</span>
                 </a>
-                
-                <!-- 3. changepwd -->
-                <a href="changepwd.html" class="menu-btn btn-password">
-                    <span>🔑 เปลี่ยนรหัสผ่านแอดมิน</span>
-                </a>
-                
-                <!-- 4. EditBill (เพิ่มเข้ามาใหม่ - อันดับรองสุดท้าย) -->
+
+                <!-- 4. จัดการและแก้ไขบิล -->
                 <a href="EditBill.html" class="menu-btn btn-editbill">
                     <span>📝 จัดการและแก้ไขบิล</span>
                 </a>
                 
-                <!-- 5. index -->
+                <!-- 5. เปลี่ยนรหัสผ่านแอดมิน -->
+                <a href="changepwd.html" class="menu-btn btn-password">
+                    <span>🔑 เปลี่ยนรหัสผ่านแอดมิน</span>
+                </a>
+                
+                <!-- 6. กลับหน้าหลัก -->
                 <a href="index.html" class="menu-btn btn-home">
                     <span>🏠 กลับหน้าหลัก</span>
                 </a>
@@ -151,10 +160,12 @@
     </div>
 
     <script>
+        // ป้องกัน Gesture Pinch Zoom บน iOS
         document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
         document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
         document.addEventListener('gestureend', function (e) { e.preventDefault(); }, { passive: false });
 
+        // ป้องกัน Double Tap Zoom
         let lastTouchEnd = 0;
         document.addEventListener('touchend', function (event) {
             const now = (new Date()).getTime();
@@ -164,6 +175,7 @@
             lastTouchEnd = now;
         }, { passive: false });
 
+        // ป้องกัน Multi-touch
         document.addEventListener('touchstart', function (event) {
             if (event.touches.length > 1) {
                 event.preventDefault();
