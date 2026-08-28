@@ -31,9 +31,10 @@
             overflow: hidden;
         }
 
+        /* ปรับ Layout ให้เป็น Flex แบบคลุมพื้นที่ และยืดหยุ่นตามความยาวข้อความ */
         .category-nav-wrap {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            display: flex;
+            flex-wrap: wrap;
             gap: 0.5rem;
             padding: 0.5rem;
             width: 100%;
@@ -45,10 +46,9 @@
             color: #1e293b;
             font-size: 0.85rem;
             font-weight: 700;
-            padding: 0.65rem 0.4rem;
+            padding: 0.6rem 0.5rem;
             border-radius: 0.85rem;
             text-align: center;
-            white-space: nowrap;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             transition: all 0.15s ease;
             display: inline-flex;
@@ -56,7 +56,18 @@
             justify-content: center;
             gap: 0.35rem;
             cursor: pointer;
-            min-height: 48px;
+            min-height: 50px;
+            
+            /* กำหนดฐานความกว้างเริ่มต้น (3 คอลัมน์) และยอมให้ยืดขยายตามข้อความได้ */
+            flex: 1 1 calc(33.333% - 0.5rem);
+            min-width: 100px;
+            word-break: break-word;
+            line-height: 1.25;
+        }
+
+        /* ถ้าข้อความยาวเกิน ให้ปุ่มขยายกินพื้นที่ครึ่งจอ (2 คอลัมน์) หรือเต็มแถวโดยอัตโนมัติ */
+        .cat-nav-btn.wide-btn {
+            flex: 2 1 calc(50% - 0.5rem);
         }
 
         .cat-nav-btn:active {
@@ -70,30 +81,6 @@
             font-size: 1.1rem;
             display: inline-block;
             flex-shrink: 0;
-        }
-
-        .cat-select-card {
-            background-color: #ffffff;
-            border: 1.5px solid #e2e8f0;
-            color: #334155;
-            font-size: 0.8rem;
-            font-weight: 700;
-            padding: 0.6rem 0.3rem;
-            border-radius: 0.75rem;
-            text-align: center;
-            transition: all 0.15s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.3rem;
-            cursor: pointer;
-        }
-
-        .cat-select-card.selected {
-            background-color: #eff6ff;
-            border-color: #2563eb;
-            color: #1d4ed8;
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
         }
     </style>
 </head>
@@ -111,7 +98,7 @@
             <!-- Categories Grid -->
             <div class="flex-1 overflow-y-auto pr-0.5 rounded-2xl">
                 <div id="quickNavContainer" class="category-nav-wrap border border-slate-200 rounded-2xl bg-slate-50">
-                    <div class="text-center col-span-2 text-xs text-slate-400 py-8">⏳ กำลังโหลดหมวดหมู่...</div>
+                    <div class="text-center w-full text-slate-400 text-xs py-8">⏳ กำลังโหลดหมวดหมู่...</div>
                 </div>
             </div>
 
@@ -132,6 +119,7 @@
 
     <!-- External JS Files -->
     <script src="key.js"></script>
+    <script src="AddMenuPopup.js"></script>
     <script src="ManageMenuPopup.js"></script>
     <script src="ManageCategoryPopup.js"></script>
     <script>
@@ -149,12 +137,15 @@
 
             if (db) {
                 ManageMenuPopup.init(db);
+                AddMenuPopup.init(db, () => {
+                    loadAllData();
+                });
                 ManageCategoryPopup.init(db, () => {
                     ManageMenuPopup.refreshActiveModal();
                 });
                 await loadAllData();
             } else {
-                document.getElementById('quickNavContainer').innerHTML = `<div class="text-center col-span-2 text-red-500 text-xs py-8">❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ (โปรดตรวจสอบ key.js)</div>`;
+                document.getElementById('quickNavContainer').innerHTML = `<div class="text-center w-full text-red-500 text-xs py-8">❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ (โปรดตรวจสอบ key.js)</div>`;
             }
         });
 
@@ -176,9 +167,13 @@
                 ManageMenuPopup.updateData(menus, foodGroups);
                 ManageCategoryPopup.updateData(menus, foodGroups);
                 renderQuickNav();
+
+                if (ManageMenuPopup.activeGroup) {
+                    ManageMenuPopup.refreshActiveModal();
+                }
             } catch (err) {
                 console.error("Error loading price editor data:", err);
-                document.getElementById('quickNavContainer').innerHTML = `<div class="text-center col-span-2 text-red-500 text-xs py-8">เกิดข้อผิดพลาดในการโหลดข้อมูล: ${err.message}</div>`;
+                document.getElementById('quickNavContainer').innerHTML = `<div class="text-center w-full text-red-500 text-xs py-8">เกิดข้อผิดพลาดในการโหลดข้อมูล: ${err.message}</div>`;
             }
         }
 
@@ -188,17 +183,20 @@
             navContainer.innerHTML = '';
 
             if (foodGroups.length === 0) {
-                navContainer.innerHTML = `<div class="text-center col-span-2 text-slate-400 text-xs py-8">ยังไม่มีหมวดหมู่อาหาร</div>`;
+                navContainer.innerHTML = `<div class="text-center w-full text-slate-400 text-xs py-8">ยังไม่มีหมวดหมู่อาหาร</div>`;
                 return;
             }
 
             foodGroups.forEach((cat, index) => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = `cat-nav-btn`;
+                
+                // ตรวจสอบความยาวตัวอักษร หากเกิน 8 ตัวอักษร ให้ใส่คลาส wide-btn เพื่อขยายพื้นที่
+                const isLongName = (cat.name || '').length > 8;
+                btn.className = `cat-nav-btn ${isLongName ? 'wide-btn' : ''}`;
                 
                 const icon = categoryIcons[index % categoryIcons.length];
-                btn.innerHTML = `<span class="cat-nav-icon">${icon}</span> <span class="truncate">${cat.name}</span>`;
+                btn.innerHTML = `<span class="cat-nav-icon">${icon}</span> <span>${cat.name}</span>`;
                 btn.onclick = () => ManageMenuPopup.openCategoryPriceModal(cat);
                 navContainer.appendChild(btn);
             });

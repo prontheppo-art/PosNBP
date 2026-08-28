@@ -30,7 +30,6 @@
             -webkit-user-select: none; 
         }
 
-        /* ตารางกริดหมวดหมู่อาหารแบบ 2 คอลัมน์ */
         .category-nav-wrap {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -72,7 +71,6 @@
             display: inline-block;
         }
 
-        /* Badge ตัวเลขรวมประจำหมวดหมู่ในหน้าหลัก */
         .cat-badge-main {
             position: absolute;
             top: -0.35rem;
@@ -108,23 +106,19 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased">
 
-    <!-- พื้นที่แสดงหลัก -->
     <div class="max-w-xl mx-auto p-3 flex flex-col h-full justify-between pb-16">
         <div class="space-y-3">
-            <!-- แถบแสดงจำนวนตระกร้าปัจจุบัน -->
             <div class="bg-white p-3 px-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
                 <span class="font-bold text-xs text-slate-700">🛒 ตะกร้าสินค้าปัจจุบัน:</span>
                 <span class="text-emerald-600 font-extrabold text-sm" id="cartCountText">0 รายการ | 0 ชิ้น</span>
             </div>
 
-            <!-- กล่องรวมปุ่มหมวดหมู่อาหาร -->
             <div id="quickNavContainer" class="category-nav-wrap">
                 <div class="col-span-2 text-center py-8 text-slate-400 font-bold text-xs">⏳ กำลังโหลดหมวดหมู่...</div>
             </div>
         </div>
     </div>
 
-    <!-- แถบปุ่มกดด้านล่างสุด -->
     <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2.5 shadow-lg z-40">
         <div class="max-w-xl mx-auto flex gap-2">
             <button type="button" onclick="window.location.href='index.html'" class="bg-white text-slate-700 border border-slate-300 font-bold py-2.5 px-2 rounded-2xl text-xs flex-1 shadow active:scale-95 transition whitespace-nowrap">🏠 หน้าหลัก</button>
@@ -133,7 +127,6 @@
         </div>
     </div>
 
-    <!-- Modal ยืนยันการล้างตะกร้า -->
     <div id="confirmClearModalOverlay" class="custom-modal-overlay">
         <div class="custom-modal-box text-center">
             <div class="w-12 h-12 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-bold">🗑️</div>
@@ -146,7 +139,6 @@
         </div>
     </div>
 
-    <!-- นำเข้า Scripts ทั้งหมด -->
     <script src="key.js"></script>
     <script src="OrderSelectPopup.js"></script>
     <script src="OrderSelectDetailPopup.js"></script>
@@ -172,6 +164,11 @@
 
         window.addEventListener('DOMContentLoaded', async () => {
             initDatabase();
+            if (db && typeof AddMenuPopup !== 'undefined' && typeof AddMenuPopup.init === 'function') {
+                AddMenuPopup.init(db, async () => {
+                    await loadData();
+                });
+            }
             updateCartUI();
             await loadData();
         });
@@ -240,6 +237,11 @@
         }
 
         function openCategoryFoodPopup(cat, icon) {
+            if (typeof OrderSelectPopup === 'undefined') {
+                alert('❌ ไม่พบไฟล์ OrderSelectPopup.js');
+                return;
+            }
+
             const catFoods = foods.filter(f => Number(f.group_id) === Number(cat.id));
             
             OrderSelectPopup.open({
@@ -252,12 +254,12 @@
                     openOrderModal(food);
                 },
                 onAddMenu: (catObj) => {
-                    AddMenuPopup.open({
-                        category: catObj,
-                        onSuccess: async () => {
-                            await loadData(); 
-                        }
-                    });
+                    const targetGroupId = catObj ? (catObj.id || catObj) : null;
+                    if (typeof AddMenuPopup !== 'undefined') {
+                        AddMenuPopup.open(targetGroupId);
+                    } else {
+                        alert('ไม่พบระบบ AddMenuPopup');
+                    }
                 },
                 onClearCategory: (catId) => clearCategoryCart(catId)
             });
@@ -272,6 +274,11 @@
         }
 
         function openOrderModal(food) {
+            if (typeof OrderSelectDetailPopup === 'undefined') {
+                alert('❌ ไม่พบไฟล์ OrderSelectDetailPopup.js');
+                return;
+            }
+
             const existingIndex = cart.findIndex(i => String(i.food_id) === String(food.id));
             const initialData = existingIndex > -1 ? cart[existingIndex] : null;
 
@@ -297,6 +304,10 @@
 
                     localStorage.setItem('cart', JSON.stringify(cart));
                     updateCartUI();
+
+                    if (typeof OrderSelectPopup !== 'undefined') {
+                        OrderSelectPopup.renderFoodGrid();
+                    }
                 }
             });
         }
@@ -326,7 +337,6 @@
             updateCartUI();
         }
 
-        // ปรับแก้ไขจุดนี้ ให้เปลี่ยนหน้าไปยัง confirmorder.html
         function goToSummary() {
             window.location.href = 'ConFirmOrder.html';
         }

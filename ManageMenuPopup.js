@@ -25,11 +25,11 @@ const ManageMenuPopup = {
                 <div class="bg-slate-700 text-white font-bold p-3 text-sm flex items-center justify-between shrink-0">
                     <span id="modalGroupTitle" class="truncate flex items-center gap-1.5">📁 ชื่อหมวดหมู่</span>
                     <div class="flex items-center gap-2">
-                        <a id="modalAddMenuBtn" href="AddMenu.html" 
-                           class="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 no-underline">
+                        <button type="button" id="modalAddMenuBtn" onclick="ManageMenuPopup.openAddMenuModal()" 
+                                class="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 cursor-pointer">
                             ➕ เมนู
-                        </a>
-                        <button type="button" onclick="ManageMenuPopup.closePriceModal()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                        </button>
+                        <button type="button" onclick="ManageMenuPopup.closePriceModal()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-sm cursor-pointer">
                             ✕
                         </button>
                     </div>
@@ -50,7 +50,7 @@ const ManageMenuPopup = {
                 </div>
 
                 <div class="p-3 bg-gray-50 border-t border-gray-200 shrink-0">
-                    <button type="button" onclick="ManageMenuPopup.closePriceModal()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs">
+                    <button type="button" onclick="ManageMenuPopup.closePriceModal()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs cursor-pointer">
                         ปิดหน้าต่าง
                     </button>
                 </div>
@@ -64,10 +64,8 @@ const ManageMenuPopup = {
         this.activeGroup = group;
         const titleEl = document.getElementById('modalGroupTitle');
         const tbodyEl = document.getElementById('modalTableBody');
-        const addBtn = document.getElementById('modalAddMenuBtn');
 
         titleEl.innerHTML = `📁 ${group.name}`;
-        addBtn.href = `AddMenu.html?groupId=${group.id}`;
 
         const filteredMenus = this.menus
             .filter(m => String(m.group_id) === String(group.id))
@@ -113,6 +111,16 @@ const ManageMenuPopup = {
 
         tbodyEl.innerHTML = rowsHtml;
         document.getElementById('priceCategoryModal').classList.remove('hidden');
+    },
+
+    openAddMenuModal() {
+        if (this.activeGroup && typeof AddMenuPopup !== 'undefined') {
+            AddMenuPopup.open(this.activeGroup.id);
+        } else if (!this.activeGroup) {
+            alert('กรุณาเลือกกลุ่มอาหารก่อนครับ');
+        } else {
+            alert('ไม่พบระบบ AddMenuPopup กรุณาแนบไฟล์ AddMenuPopup.js ในหน้าเว็บ');
+        }
     },
 
     refreshActiveModal() {

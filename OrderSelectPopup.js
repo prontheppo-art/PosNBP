@@ -1,121 +1,138 @@
 // OrderSelectPopup.js
-
 const OrderSelectPopup = {
-    open: function ({ category, foods, cart, icon, onSelectFood, onAddMenu, onClearCategory }) {
-        // ลบ Modal เดิมหากมีค้างอยู่
-        const existingModal = document.getElementById('orderSelectModalOverlay');
-        if (existingModal) existingModal.remove();
+    options: null,
+    currentCategory: null,
 
-        // 1. คำนวณจำนวนสินค้าที่อยู่ใน Cart ของแต่ละ food_id (รวม qty)
-        const itemQtyMap = {};
-        if (Array.isArray(cart)) {
-            cart.forEach(item => {
-                const foodId = String(item.food_id);
-                itemQtyMap[foodId] = (itemQtyMap[foodId] || 0) + (Number(item.qty) || 0);
-            });
-        }
+    initModalHTML() {
+        if (document.getElementById('orderSelectModalOverlay')) return;
 
-        // 2. สร้าง Element ป๊อปอัพ
-        const modalOverlay = document.createElement('div');
-        modalOverlay.id = 'orderSelectModalOverlay';
-        modalOverlay.className = 'custom-modal-overlay active';
-
-        // 3. ใส่โครงสร้าง HTML & CSS สำหรับหน้าต่าง Popup
-        modalOverlay.innerHTML = `
-            <div class="custom-modal-box relative border-t-0 p-5 rounded-3xl max-w-sm w-full bg-white shadow-2xl transition-all">
+        const modalHTML = `
+        <div id="orderSelectModalOverlay" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 backdrop-blur-sm">
+            <div class="bg-white rounded-3xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden shadow-2xl border border-slate-100">
                 
-                <!-- ส่วนหัว (Header) -->
-                <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
-                    <div class="flex items-center gap-2">
-                        <span class="text-2xl">${icon || '🍱'}</span>
-                        <h3 class="text-lg font-extrabold text-slate-800">${category.name}</h3>
+                <!-- Header -->
+                <div class="p-3 bg-white border-b border-slate-100 flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <span id="orderSelectCatIcon" class="text-xl shrink-0">🍱</span>
+                        <h3 id="orderSelectCatTitle" class="font-extrabold text-slate-800 text-sm truncate">ชื่อหมวดหมู่</h3>
                     </div>
-                    
-                    <div class="flex items-center gap-1.5">
-                        <button type="button" id="btnClearCatCart" class="px-2.5 py-1 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition active:scale-95 border border-slate-200">
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button type="button" onclick="OrderSelectPopup.handleClearCart()" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg text-xs font-bold transition border border-rose-200">
                             ยกเลิก
                         </button>
-                        <button type="button" id="btnAddCatMenu" class="px-2.5 py-1 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg shadow-sm transition active:scale-95 flex items-center gap-0.5">
-                            + เมนู
+                        <button type="button" onclick="OrderSelectPopup.handleAddMenu()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center gap-0.5 shadow-sm transition">
+                            <span>+</span> เมนู
                         </button>
-                        <button type="button" id="btnCloseCatModal" class="text-slate-400 hover:text-slate-600 text-2xl font-bold ml-1 leading-none">&times;</button>
+                        <button type="button" onclick="OrderSelectPopup.close()" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-full font-bold text-sm">
+                            ✕
+                        </button>
                     </div>
                 </div>
 
-                <!-- ส่วนรายการอาหาร (Grid Foods) -->
-                <div class="grid grid-cols-2 gap-2.5 max-h-[55vh] overflow-y-auto p-1 text-slate-700">
-                    ${foods.length === 0 ? `
-                        <div class="col-span-2 text-center py-8 text-slate-400 font-bold text-xs">
-                            ยังไม่มีรายการอาหารในหมวดหมู่นี้
-                        </div>
-                    ` : foods.map(food => {
-                        const qty = itemQtyMap[String(food.id)] || 0;
-                        const hasQty = qty > 0;
-
-                        return `
-                            <button type="button" data-food-id="${food.id}" 
-                                class="food-item-btn relative flex items-center justify-center p-3 rounded-xl font-bold text-sm text-center transition active:scale-95 min-h-[54px] border-2 
-                                ${hasQty 
-                                    ? 'bg-emerald-50/80 border-emerald-500 text-emerald-800 shadow-sm' 
-                                    : 'bg-white border-sky-200 hover:border-sky-400 text-slate-700 shadow-xs'
-                                }">
-                                
-                                <span>${food.name}</span>
-
-                                <!-- Badge แสดงจำนวนตัวเลขมุมขวาบนเมื่อมีการสั่งสินค้า -->
-                                ${hasQty ? `
-                                    <span class="absolute -top-2 -right-2 bg-rose-500 text-white font-extrabold text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-md">
-                                        ${qty}
-                                    </span>
-                                ` : ''}
-                            </button>
-                        `;
-                    }).join('')}
+                <!-- Food List Grid (ปรับให้เลื่อนลื่นขึ้นด้วย touch-action & overscroll) -->
+                <div class="flex-1 overflow-y-auto p-3" style="touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
+                    <div id="orderSelectFoodGrid" class="grid grid-cols-3 gap-2"></div>
                 </div>
 
-                <!-- ปุ่มปิดหน้านี้ ด้านล่าง -->
-                <div class="mt-4 pt-2 border-t border-slate-100">
-                    <button type="button" id="btnBottomCloseCatModal" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-98 text-slate-600 font-bold text-xs rounded-xl transition">
+                <!-- Footer -->
+                <div class="p-2.5 bg-slate-50 border-t border-slate-100 shrink-0">
+                    <button type="button" onclick="OrderSelectPopup.close()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition">
                         ปิดหน้านี้
                     </button>
                 </div>
+
             </div>
+        </div>
         `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    },
 
-        document.body.appendChild(modalOverlay);
+    open(options) {
+        this.options = options || {};
+        this.currentCategory = this.options.category || null;
+        
+        this.initModalHTML();
 
-        // 4. ผูก Event Listeners ให้กับปุ่มต่างๆ
-        const closeModal = () => modalOverlay.remove();
+        const iconEl = document.getElementById('orderSelectCatIcon');
+        const titleEl = document.getElementById('orderSelectCatTitle');
+        const overlay = document.getElementById('orderSelectModalOverlay');
 
-        modalOverlay.querySelector('#btnCloseCatModal').onclick = closeModal;
-        modalOverlay.querySelector('#btnBottomCloseCatModal').onclick = closeModal;
+        if (iconEl) iconEl.textContent = this.options.icon || '🍱';
+        if (titleEl) titleEl.textContent = this.currentCategory ? this.currentCategory.name : 'หมวดหมู่';
 
-        // ปุ่มยกเลิกสินค้าเฉพาะหมวดหมู่นี้
-        modalOverlay.querySelector('#btnClearCatCart').onclick = () => {
-            if (typeof onClearCategory === 'function') {
-                onClearCategory(category.id);
+        this.renderFoodGrid();
+
+        if (overlay) {
+            overlay.classList.remove('hidden');
+        }
+    },
+
+    renderFoodGrid() {
+        const grid = document.getElementById('orderSelectFoodGrid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const foods = (this.options && this.options.foods) ? this.options.foods : [];
+        let cart = [];
+        
+        try {
+            cart = JSON.parse(localStorage.getItem('cart')) || [];
+        } catch (e) {
+            cart = (this.options && this.options.cart) ? this.options.cart : [];
+        }
+
+        if (foods.length === 0) {
+            grid.innerHTML = `<div class="col-span-3 text-center py-8 text-slate-400 text-xs font-bold">ไม่มีรายการอาหารในหมวดหมู่นี้</div>`;
+            return;
+        }
+
+        foods.forEach(food => {
+            const inCart = cart.find(c => String(c.food_id) === String(food.id));
+            const qty = inCart ? (Number(inCart.qty) || 0) : 0;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            
+            // ดีไซน์ปุ่มสไตล์ทรงรูปที่ 2 (ขอบมนกำลังดี + กรอบสีเขียวเมื่อเลือก)
+            btn.className = `p-2 rounded-xl border-2 text-center font-extrabold text-xs flex flex-col items-center justify-center min-h-[48px] transition relative active:scale-95 ${
+                qty > 0 
+                ? 'bg-white border-emerald-500 text-emerald-600 shadow-sm' 
+                : 'bg-white border-emerald-500/60 text-slate-700 hover:border-emerald-500'
+            }`;
+
+            // ตัวเลข Badge วงกลมสีแดงมุมขวาบน
+            let badge = '';
+            if (qty > 0) {
+                badge = `<span class="absolute -top-2 -right-1.5 bg-rose-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-black border border-white shadow-md z-10">${qty}</span>`;
             }
-            closeModal();
-        };
 
-        // ปุ่มเพิ่มเมนูใหม่ในหมวดหมู่นี้
-        modalOverlay.querySelector('#btnAddCatMenu').onclick = () => {
-            closeModal();
-            if (typeof onAddMenu === 'function') {
-                onAddMenu(category);
-            }
-        };
-
-        // ปุ่มเลือกรายการอาหารแต่ละรายการ
-        modalOverlay.querySelectorAll('.food-item-btn').forEach(btn => {
+            btn.innerHTML = `${badge}<span class="line-clamp-2 leading-tight">${food.name}</span>`;
+            
             btn.onclick = () => {
-                const foodId = btn.getAttribute('data-food-id');
-                const selectedFood = foods.find(f => String(f.id) === String(foodId));
-                closeModal();
-                if (selectedFood && typeof onSelectFood === 'function') {
-                    onSelectFood(selectedFood);
+                if (this.options && typeof this.options.onSelectFood === 'function') {
+                    this.options.onSelectFood(food);
                 }
             };
+            
+            grid.appendChild(btn);
         });
+    },
+
+    handleAddMenu() {
+        if (this.options && typeof this.options.onAddMenu === 'function') {
+            this.options.onAddMenu(this.currentCategory);
+        }
+    },
+
+    handleClearCart() {
+        if (this.options && typeof this.options.onClearCategory === 'function' && this.currentCategory) {
+            this.options.onClearCategory(this.currentCategory.id);
+            this.renderFoodGrid();
+        }
+    },
+
+    close() {
+        const overlay = document.getElementById('orderSelectModalOverlay');
+        if (overlay) overlay.classList.add('hidden');
     }
 };

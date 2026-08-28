@@ -2,445 +2,217 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
-    <title>รายการอาหาร - ลาบหนองบัวลำภู(PrintOrder.html)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>รายการอาหาร - ลาบหนองบัวลำภู</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <style>
-        html, body { 
-            height: 100%; margin: 0; padding: 0; 
-            font-family: 'Sarabun', sans-serif; background: #f4f6f9; 
-            -webkit-user-select: none; user-select: none;
-        }
-
-        .app-layout { 
-            display: flex; align-items: flex-start; justify-content: center; 
-            min-height: 100dvh; width: 100vw; padding: 12px; box-sizing: border-box; 
-        }
-
-        .bill-container { 
-            width: 100%; max-width: 420px; background: #fff; 
-            border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); 
-            padding: 16px; box-sizing: border-box; display: flex; flex-direction: column;
-            max-height: calc(100dvh - 24px);
-        }
-
-        .food-list-border {
-            border: 2px solid #000000;
-            border-radius: 12px;
-            padding: 12px;
-            margin: 8px 0;
-            background-color: #ffffff;
-            flex: 1 1 auto;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        #reviewQrcode img {
-            margin: 0 auto;
-            display: block;
-            width: 75px;
-            height: 75px;
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Sarabun', sans-serif; 
+            background-color: #f8fafc;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         @media print {
-            body, .app-layout {
-                background: #fff !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                height: auto !important;
-            }
-            .bill-container {
-                box-shadow: none !important;
-                max-height: none !important;
-                border-radius: 0 !important;
-                padding: 10px !important;
-                width: 100% !important;
-            }
-            .food-list-border {
-                overflow: visible !important;
-                max-height: none !important;
-                border: 2px solid #000000 !important;
-            }
             .no-print {
                 display: none !important;
+            }
+            body {
+                background-color: #ffffff;
+            }
+            .print-card {
+                box-shadow: none !important;
+                border: none !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 0 !important;
             }
         }
     </style>
 </head>
-<body>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-3">
 
-    <div class="app-layout">
-        <div class="bill-container" id="captureArea">
-            
-            <!-- 📌 Header -->
-            <div class="text-center shrink-0 pb-1">
-                <h2 class="font-bold text-lg text-slate-900 leading-tight">ลาบหนองบัวลำภู @เขื่อนขุนด่าน</h2>
-                <div class="text-xs font-semibold text-slate-700 mt-0.5">064-565-4951</div>
-                
-                <div class="flex flex-wrap justify-center items-center gap-1 font-bold text-xs text-slate-900 mt-1.5">
-                    <span>รายการอาหาร</span>
-                    <span id="orderDateTime" class="font-normal text-slate-700">( - )</span>
+    <div class="print-card bg-white rounded-3xl w-full max-w-sm p-5 shadow-xl border border-slate-100 flex flex-col justify-between my-auto">
+        
+        <div>
+            <!-- Header ร้าน -->
+            <div class="text-center mb-4">
+                <h2 class="font-extrabold text-slate-800 text-lg">ลาบหนองบัวลำภู @เขื่อนขุนด่าน</h2>
+                <p class="text-xs text-slate-500 font-semibold mt-0.5">064-565-4951</p>
+                <p class="text-xs text-slate-600 font-bold mt-1">รายการอาหาร ( <span id="customerGroupLabel">-</span> )</p>
+            </div>
+
+            <!-- รายการอาหาร -->
+            <div class="border-2 border-slate-900 rounded-2xl p-4 min-h-[140px] flex flex-col items-center justify-center mb-3">
+                <div id="itemListContainer" class="w-full space-y-2">
+                    <p class="text-slate-300 font-bold text-center text-sm">ไม่มีรายการอาหาร</p>
                 </div>
             </div>
 
-            <!-- 🔄 รายการอาหาร (Scrollable) -->
-            <div class="food-list-border">
-                <div id="billItemList" class="space-y-2.5 text-xs">
-                    <div class="text-center text-slate-400 py-4">กำลังดึงข้อมูลรายการอาหาร...</div>
-                </div>
+            <!-- หมายเหตุออเดอร์ (ถ้ามี) -->
+            <div id="orderNoteContainer" class="hidden mb-3 p-2 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-900">
+                <span>📝 หมายเหตุ: </span><span id="orderNoteText"></span>
             </div>
 
-            <!-- 📌 Footer -->
-            <div class="shrink-0 pt-1">
-                <div id="orderCustomerInfo" class="text-xs text-slate-700 space-y-0.5 mb-2 px-1"></div>
-
-                <div class="pt-2 border-t border-slate-300">
-                    <div class="flex justify-between items-center text-xs font-bold text-slate-900">
-                        <div id="billSummaryCount" class="border border-black px-2 py-1 rounded">
-                            0 รายการ | 0 ชิ้น
-                        </div>
-                        <div id="billTotalPrice" class="text-base font-black text-slate-900">
-                            รวม 0 บาท
-                        </div>
-                    </div>
+            <!-- สรุปจำนวนและราคารวม -->
+            <div class="flex items-center justify-between border-b-2 border-dashed border-slate-200 pb-3 mb-4">
+                <div class="border border-slate-800 rounded-lg px-2.5 py-1">
+                    <span id="summaryQty" class="font-extrabold text-xs text-slate-800">0 รายการ | 0 ชิ้น</span>
                 </div>
-
-                <div class="mt-3 pt-2 border-t border-dashed border-slate-300 text-center">
-                    <div class="text-[11px] font-bold text-slate-800">⭐ ขอขอบพระคุณที่อุดหนุนค่ะ ⭐</div>
-                    <div class="text-[10px] text-slate-600 mb-1">แนะนำ ติชม ได้นะคะ 🙏</div>
-                    
-                    <div class="flex justify-center my-1">
-                        <div id="reviewQrcode" class="p-1.5 border border-slate-900 rounded-lg bg-white inline-block"></div>
-                    </div>
+                <div class="text-right">
+                    <span class="font-extrabold text-base text-slate-900">รวม <span id="summaryTotal">0</span> บาท</span>
                 </div>
-
-                <button id="saveBtn" onclick="printAndFinish()" class="no-print mt-3 bg-slate-900 hover:bg-black text-white font-bold py-3 px-4 rounded-xl text-sm w-full shadow-md active:scale-95 transition cursor-pointer">
-                    พิมพ์
-                </button>
             </div>
-
         </div>
+
+        <div>
+            <!-- ส่วน QR Code -->
+            <div id="touristOnlySection" class="text-center my-3">
+                <p class="text-xs font-bold text-slate-700 mb-0.5">⭐ ขอบพระคุณที่อุดหนุนค่ะ ⭐</p>
+                <p class="text-[11px] text-slate-500 font-semibold mb-2">แนะนำ ติชม ได้นะคะ 🙏</p>
+                <div class="flex justify-center mb-3">
+                    <div class="p-1.5 border border-slate-300 rounded-xl bg-white shadow-sm">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=ลาบหนองบัวลำภู" alt="QR Code" class="w-28 h-28 object-contain">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ปุ่มพิมพ์ -->
+            <button type="button" id="printBtn" onclick="window.print()" class="no-print w-full py-3 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-extrabold text-sm rounded-xl shadow-md transition">
+                พิมพ์
+            </button>
+        </div>
+
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://wmhweeeyulhmoilypklz.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_yXKK7aSunM_KCqRiUhGupQ__Qs1nyCd';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        window.addEventListener('DOMContentLoaded', () => {
+            loadOrderData();
+        });
 
-        const GOOGLE_MAPS_REVIEW_URL = 'https://maps.app.goo.gl/tRU6iu9r3Fy2NuAY6';
+        function loadOrderData() {
+            const pendingOrderRaw = localStorage.getItem('pendingOrder');
+            if (!pendingOrderRaw) return;
 
-        let currentPendingPayload = null;
+            const orderData = JSON.parse(pendingOrderRaw);
+            const cart = orderData.cart || [];
 
-        document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
-        
-        window.onload = function() {
-            loadPendingOrderData();
-            generateReviewQRCode();
-        };
+            // 1. จัดการแสดงผลกลุ่มลูกค้า (ตัดคำว่า "นักท่องเที่ยว" ออกหากเป็นกลุ่มนักท่องเที่ยว)
+            let rawGroup = orderData.groupName || 'ชาวบ้าน';
+            let groupDisplay = '';
 
-        function cleanNoteText(item) {
-            if (!item) return '';
-            if (typeof item === 'string') {
-                const parts = item.split(',').map(s => s.trim()).filter(Boolean);
-                return [...new Set(parts)].join(', ');
+            if (Number(orderData.groupId) === 2) {
+                // ดึงเฉพาะสถานที่ และ Zone/ห้องพัก
+                let locDetails = [];
+                if (orderData.locationName) locDetails.push(orderData.locationName);
+                if (orderData.zoneName && orderData.zoneName !== orderData.locationName) {
+                    locDetails.push(orderData.zoneName);
+                }
+
+                groupDisplay = locDetails.join(' - ');
+
+                // เผื่อกรณีเลือกกลุ่มนักท่องเที่ยวแต่ไม่ได้เลือกสถานที่
+                if (!groupDisplay) groupDisplay = 'นักท่องเที่ยว';
+            } else {
+                // กลุ่มชาวบ้าน หรือ สบายดี แสดงตามชื่อกลุ่มปกติ
+                groupDisplay = rawGroup;
             }
-            
-            let notes = [];
-            if (item.is_custom_price && Number(item.custom_price) > 0) {
-                notes.push(`⭐ ราคาพิเศษ ${item.custom_price}.-`);
+
+            // ต่อท้ายด้วยเบอร์โทรศัพท์ (ถ้ามี)
+            if (orderData.customerPhone) {
+                groupDisplay += ` โทร: ${orderData.customerPhone}`;
             }
-            if (item.fried_egg > 0) notes.push(`ไข่ดาว +${item.fried_egg}`);
-            if (item.omelet > 0) notes.push(`ไข่เจียว +${item.omelet}`);
-            if (item.note && item.note.trim()) notes.push(item.note.trim());
-            return notes.join(', ');
-        }
 
-        function generateReviewQRCode() {
-            const qrContainer = document.getElementById('reviewQrcode');
-            qrContainer.innerHTML = '';
-            
-            new QRCode(qrContainer, {
-                text: GOOGLE_MAPS_REVIEW_URL,
-                width: 75,
-                height: 75,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.M
-            });
-        }
+            const groupLabel = document.getElementById('customerGroupLabel');
+            if (groupLabel) {
+                groupLabel.textContent = groupDisplay;
+            }
 
-        /* 🌟 ระบบรับและคำนวณข้อมูลจาก Confirm Order (รองรับ Custom Price) */
-        function loadPendingOrderData() {
-            const rawPending = localStorage.getItem('pendingOrder') || localStorage.getItem('pendingOrderData');
-            const rawCart = localStorage.getItem('cart');
-
-            if (rawPending) {
-                try {
-                    const parsed = JSON.parse(rawPending);
-                    
-                    if (parsed.cart && Array.isArray(parsed.cart)) {
-                        const groupId = Number(parsed.groupId) || 1;
-                        let processedItems = [];
-                        let totalQty = 0;
-
-                        parsed.cart.forEach(item => {
-                            const q = Number(item.qty || 1);
-                            
-                            // ตรวจสอบระบบราคาพิเศษ (Custom Price) ก่อนเป็นอันดับแรก
-                            let basePrice = 0;
-                            if (item.is_custom_price && Number(item.custom_price) > 0) {
-                                basePrice = Number(item.custom_price);
-                            } else {
-                                if (groupId === 1) basePrice = Number(item.price_1 || item.price || 0);
-                                else if (groupId === 2) basePrice = Number(item.price_2 || item.price || 0);
-                                else if (groupId === 3) basePrice = Number(item.price_3 || item.price || 0);
-                            }
-
-                            const eggCost = (Number(item.fried_egg) || 0) * 10;
-                            const omeletCost = (Number(item.omelet) || 0) * 10;
-                            const unitPrice = basePrice + eggCost + omeletCost;
-                            const itemTotalPrice = unitPrice * q;
-
-                            totalQty += q;
-
-                            processedItems.push({
-                                food_id: item.food_id || item.id,
-                                name: item.name || 'รายการอาหาร',
-                                qty: q,
-                                price: itemTotalPrice,
-                                note: cleanNoteText(item),
-                                isDeliveryFee: false
-                            });
-                        });
-
-                        // เพิ่มแถบค่าบริการจัดส่ง (ถ้ามี)
-                        if (parsed.deliveryFee && Number(parsed.deliveryFee) > 0) {
-                            processedItems.push({
-                                food_id: 0,
-                                name: 'ค่าบริการจัดส่ง (สั่งไม่ถึง 300.-)',
-                                qty: 1,
-                                price: Number(parsed.deliveryFee),
-                                note: '',
-                                isDeliveryFee: true
-                            });
-                        }
-
-                        currentPendingPayload = {
-                            customer_group: parsed.groupName || 'ชาวบ้าน',
-                            customer_phone: parsed.customerPhone || '',
-                            location_name: parsed.locationName || '',
-                            zone_name: parsed.zoneName || '',
-                            note: parsed.orderNote || '',
-                            items: processedItems,
-                            total_qty: totalQty,
-                            total_price: parsed.grandTotal || parsed.subtotal,
-                            created_at: parsed.createdAt || new Date().toISOString()
-                        };
-                    } else {
-                        currentPendingPayload = parsed;
-                    }
-                } catch (err) {
-                    console.error('Error parsing pending order data:', err);
+            // 2. แสดงหมายเหตุออเดอร์ (ถ้ามี)
+            if (orderData.orderNote) {
+                const noteContainer = document.getElementById('orderNoteContainer');
+                const noteText = document.getElementById('orderNoteText');
+                if (noteContainer && noteText) {
+                    noteText.textContent = orderData.orderNote;
+                    noteContainer.classList.remove('hidden');
                 }
             }
 
-            // Fallback กรณีดึงตรงจาก cart
-            if (!currentPendingPayload || !currentPendingPayload.items || currentPendingPayload.items.length === 0) {
-                let items = [];
-                if (rawCart) {
-                    try { items = JSON.parse(rawCart); } catch(e){}
-                }
-
-                const currentGroup = localStorage.getItem('selectedGroupName') || 'ชาวบ้าน';
-                let totalQty = 0;
-                let totalPrice = 0;
-
-                const processedItems = items.map(item => {
-                    const q = Number(item.qty || 1);
-                    const p = Number(item.price || 0);
-                    const isDelivery = item.food_id === 0 || item.name === 'ค่าบริการจัดส่ง' || !!item.isDeliveryFee;
-                    const itemSum = p;
-
-                    if (!isDelivery) {
-                        totalQty += q;
-                    }
-                    totalPrice += itemSum;
-
-                    return {
-                        food_id: item.food_id ?? item.id,
-                        name: item.name || 'รายการอาหาร',
-                        qty: q,
-                        price: itemSum,
-                        note: cleanNoteText(item),
-                        isDeliveryFee: isDelivery
-                    };
-                });
-
-                currentPendingPayload = {
-                    customer_group: currentGroup,
-                    customer_phone: localStorage.getItem('customerPhone') || '',
-                    location_name: localStorage.getItem('selectedLocationName') || '',
-                    zone_name: localStorage.getItem('selectedZoneName') || '',
-                    note: localStorage.getItem('orderNote') || '',
-                    items: processedItems,
-                    total_qty: totalQty,
-                    total_price: totalPrice,
-                    created_at: new Date().toISOString()
-                };
-            }
-
-            renderBill(currentPendingPayload);
+            // 3. แสดงรายการอาหาร
+            renderItemList(cart, orderData.groupId, orderData.deliveryFee || 0, orderData.grandTotal || 0);
         }
 
-        function renderBill(order) {
-            const items = order.items || [];
-            const container = document.getElementById('billItemList');
-            container.innerHTML = '';
+        function renderItemList(cart, groupId, deliveryFee, grandTotal) {
+            const container = document.getElementById('itemListContainer');
+            const summaryQtyEl = document.getElementById('summaryQty');
+            const summaryTotalEl = document.getElementById('summaryTotal');
 
-            if (items.length === 0) {
-                container.innerHTML = `<div class="text-center text-slate-400 py-4">ไม่มีรายการอาหาร</div>`;
+            if (!container) return;
+
+            if (cart.length === 0) {
+                container.innerHTML = `<p class="text-slate-300 font-bold text-center text-sm">ไม่มีรายการอาหาร</p>`;
+                if (summaryQtyEl) summaryQtyEl.textContent = `0 รายการ | 0 ชิ้น`;
+                if (summaryTotalEl) summaryTotalEl.textContent = `0`;
                 return;
             }
 
-            const sortedItems = [...items].sort((a, b) => {
-                const aIsDelivery = a.food_id === 0 || a.name.includes('ค่าบริการจัดส่ง') || a.isDeliveryFee;
-                const bIsDelivery = b.food_id === 0 || b.name.includes('ค่าบริการจัดส่ง') || b.isDeliveryFee;
-                if (aIsDelivery) return 1;
-                if (bIsDelivery) return -1;
-                return (a.name || '').localeCompare(b.name || '', 'th');
-            });
+            let totalItems = cart.length;
+            let totalQty = 0;
+            let html = '';
 
-            let calculatedGrandTotal = 0;
-            let realFoodQty = 0;
-            let realFoodCount = 0;
-
-            sortedItems.forEach(item => {
-                const itemName = item.name || '';
-                const itemQty = Number(item.qty || 1);
-                const itemTotalPrice = Number(item.price || 0);
-                const isDelivery = item.food_id === 0 || itemName.includes('ค่าบริการจัดส่ง') || item.isDeliveryFee;
-
-                calculatedGrandTotal += itemTotalPrice;
-
-                if (!isDelivery) {
-                    realFoodCount++;
-                    realFoodQty += itemQty;
-                }
-
-                const cleanedNote = cleanNoteText(item.note);
-
-                const div = document.createElement('div');
-                div.className = 'flex justify-between items-start pb-2 border-b border-slate-200 last:border-0 last:pb-0';
+            cart.forEach(item => {
+                const qty = Number(item.qty) || 1;
                 
-                div.innerHTML = `
-                    <div class="pr-2 flex-1">
-                        <div class="font-bold text-slate-900 text-xs ${isDelivery ? 'text-amber-700' : ''}">
-                            ${itemName} ${!isDelivery ? `<span class="font-black text-black">x${itemQty}</span>` : ''}
-                        </div>
-                        ${cleanedNote ? `<div class="text-[11px] text-slate-600 font-semibold mt-0.5 ml-1">▪ ${cleanedNote}</div>` : ''}
-                    </div>
-                    <span class="font-bold text-slate-900 text-xs whitespace-nowrap">${itemTotalPrice.toLocaleString()} ฿</span>
-                `;
-                container.appendChild(div);
-            });
-
-            const now = new Date();
-            const formattedDate = now.toLocaleDateString('th-TH', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-
-            const locStr = [order.location_name, order.zone_name].filter(Boolean).join(' - ');
-            const locDisplay = locStr ? ` (${locStr})` : '';
-
-            document.getElementById('orderDateTime').textContent = `(${formattedDate})${locDisplay}`;
-
-            const infoContainer = document.getElementById('orderCustomerInfo');
-            let infoHtml = '';
-            
-            if (order.customer_phone) {
-                infoHtml += `<div><b>โทร:</b> ${order.customer_phone}</div>`;
-            }
-            if (order.note) {
-                infoHtml += `<div class="font-bold text-slate-800"><b>หมายเหตุ:</b> ${order.note}</div>`;
-            }
-            infoContainer.innerHTML = infoHtml;
-
-            const finalTotalQty = order.total_qty !== undefined ? order.total_qty : realFoodQty;
-            const finalTotalPrice = order.total_price !== undefined ? order.total_price : calculatedGrandTotal;
-
-            document.getElementById('billSummaryCount').textContent = `${realFoodCount} รายการ | ${finalTotalQty} ชิ้น`;
-            document.getElementById('billTotalPrice').textContent = `รวม ${finalTotalPrice.toLocaleString()} บาท`;
-        }
-
-        /* 🌟 บันทึกลง Supabase ตาราง orders แล้วสั่งพิมพ์ */
-        async function printAndFinish() {
-            if (!currentPendingPayload || !currentPendingPayload.items || currentPendingPayload.items.length === 0) {
-                alert('ไม่พบข้อมูลออเดอร์สำหรับบันทึก');
-                return;
-            }
-
-            const saveBtn = document.getElementById('saveBtn');
-            saveBtn.disabled = true;
-            saveBtn.innerText = '⏳ กำลังบันทึกข้อมูล...';
-
-            try {
-                let rawGroup = currentPendingPayload.customer_group || 'ชาวบ้าน';
-                if (typeof rawGroup === 'string' && rawGroup.includes('(')) {
-                    rawGroup = rawGroup.split('(')[0].trim();
+                let basePrice = 0;
+                if (item.is_custom_price && Number(item.custom_price) > 0) {
+                    basePrice = Number(item.custom_price);
+                } else {
+                    const gId = Number(groupId) || 1;
+                    if (gId === 1) basePrice = Number(item.price_1 || item.price || 0);
+                    else if (gId === 2) basePrice = Number(item.price_2 || item.price || 0);
+                    else if (gId === 3) basePrice = Number(item.price_3 || item.price || 0);
                 }
 
-                const now = new Date();
-                const tzOffset = 7 * 60 * 60 * 1000;
-                const localISOTime = new Date(now.getTime() + tzOffset).toISOString();
+                const eggCost = (Number(item.fried_egg) || 0) * 10;
+                const omeletCost = (Number(item.omelet) || 0) * 10;
+                const unitPrice = basePrice + eggCost + omeletCost;
+                const itemTotal = unitPrice * qty;
 
-                const payloadToInsert = {
-                    customer_group: rawGroup,
-                    location_name: currentPendingPayload.location_name || null,
-                    zone_name: currentPendingPayload.zone_name || null,
-                    customer_phone: currentPendingPayload.customer_phone || null,
-                    note: currentPendingPayload.note || null,
-                    total_price: currentPendingPayload.total_price,
-                    total_qty: currentPendingPayload.total_qty,
-                    items: currentPendingPayload.items,
-                    status: 'completed',
-                    order_date: localISOTime.split('T')[0],
-                    created_at: localISOTime
-                };
+                totalQty += qty;
 
-                const { error } = await supabaseClient
-                    .from('orders')
-                    .insert([payloadToInsert]);
+                let itemSubDetails = [];
+                if (item.fried_egg > 0) itemSubDetails.push(`ไข่ดาว+${item.fried_egg}`);
+                if (item.omelet > 0) itemSubDetails.push(`ไข่เจียว+${item.omelet}`);
+                if (item.note) itemSubDetails.push(item.note);
 
-                if (error) throw error;
+                html += `
+                <div class="flex justify-between items-start text-xs font-bold text-slate-800 py-0.5">
+                    <div class="flex-1 pr-2">
+                        <span class="block truncate max-w-[170px]">${item.name}</span>
+                        ${itemSubDetails.length > 0 ? `<span class="block text-[10px] text-slate-500 font-normal">(${itemSubDetails.join(', ')})</span>` : ''}
+                    </div>
+                    <span class="shrink-0 text-slate-600 mr-3">x${qty}</span>
+                    <span class="shrink-0 text-right min-w-[45px]">${itemTotal}.-</span>
+                </div>
+                `;
+            });
 
-                window.print();
-
-                // ล้างข้อมูลออเดอร์ในเครื่องทั้งหมดเมื่อบันทึกเสร็จ
-                localStorage.removeItem('pendingOrder');
-                localStorage.removeItem('pendingOrderData');
-                localStorage.removeItem('cart');
-                localStorage.removeItem('customerPhone');
-                localStorage.removeItem('orderNote');
-                localStorage.removeItem('selectedLocation');
-                localStorage.removeItem('selectedLocationName');
-                localStorage.removeItem('selectedZoneName');
-
-                window.location.href = 'index.html';
-
-            } catch (err) {
-                console.error("เกิดข้อผิดพลาดในการบันทึก: ", err);
-                alert("เกิดข้อผิดพลาดในการบันทึกออเดอร์: " + err.message);
-                saveBtn.disabled = false;
-                saveBtn.innerText = 'พิมพ์';
+            if (deliveryFee > 0) {
+                html += `
+                <div class="flex justify-between items-center text-xs font-bold text-slate-700 pt-1 border-t border-slate-200 mt-1">
+                    <span>🛵 ค่าบริการจัดส่ง</span>
+                    <span>${deliveryFee}.-</span>
+                </div>
+                `;
             }
+
+            container.innerHTML = html;
+            if (summaryQtyEl) summaryQtyEl.textContent = `${totalItems} รายการ | ${totalQty} ชิ้น`;
+            if (summaryTotalEl) summaryTotalEl.textContent = Number(grandTotal).toLocaleString();
         }
     </script>
 </body>

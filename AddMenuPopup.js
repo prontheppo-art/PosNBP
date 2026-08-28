@@ -1,140 +1,96 @@
-/**
- * AddMenuPopup.js
- * จัดการ Pop-up สำหรับเพิ่มรายการอาหารใหม่ประจำหมวดหมู่
- */
-
+// AddMenuPopup.js
 const AddMenuPopup = {
-    overlayEl: null,
+    db: null,
+    currentGroupId: null,
     onSuccessCallback: null,
-    categoryId: null,
 
-    init() {
-        if (document.getElementById('addMenuModalOverlay')) return;
+    init(dbInstance, onSuccess) {
+        this.db = dbInstance;
+        this.onSuccessCallback = onSuccess;
+        this.injectModalHTML();
+    },
 
-        const overlay = document.createElement('div');
-        overlay.id = 'addMenuModalOverlay';
-        overlay.className = 'custom-modal-overlay';
-        overlay.style.cssText = `
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
-            display: none; align-items: center; justify-content: center;
-            z-index: 99999; padding: 1rem;
-        `;
+    injectModalHTML() {
+        if (document.getElementById('addMenuModal')) return;
 
-        overlay.innerHTML = `
-            <div class="custom-modal-box relative bg-white rounded-3xl max-w-xs w-full p-5 shadow-2xl border-t-4 border-emerald-500 transition-all duration-200">
-                
-                <!-- หัวข้อ Pop-up -->
-                <h3 id="addMenuCategoryTitle" class="text-base font-extrabold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-1.5">
-                    📌 เพิ่มเมนูใหม่
-                </h3>
+        const modalHTML = `
+        <div id="addMenuModal" class="hidden fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-3 backdrop-blur-sm">
+            <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border-2 border-emerald-600 flex flex-col">
+                <div class="bg-emerald-600 text-white font-bold p-3.5 text-sm flex items-center justify-between shrink-0">
+                    <span class="flex items-center gap-1.5">➕ เพิ่มเมนูอาหารใหม่</span>
+                    <button type="button" onclick="AddMenuPopup.close()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-sm cursor-pointer">
+                        ✕
+                    </button>
+                </div>
 
-                <!-- ฟอร์มกรอกข้อมูล -->
-                <form id="addMenuPopupForm" onsubmit="AddMenuPopup.handleSubmit(event)" class="space-y-3.5">
+                <form id="addMenuForm" onsubmit="AddMenuPopup.submitForm(event)" class="p-4 space-y-3 text-xs">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1.5">ชื่อเมนูอาหาร *</label>
-                        <input type="text" id="addMenuPopupName" required placeholder="ระบุชื่อเมนู" 
-                               class="w-full text-xs p-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 font-bold text-slate-800 transition">
+                        <label class="block text-slate-700 font-bold mb-1">ชื่อรายการอาหาร <span class="text-red-500">*</span></label>
+                        <input type="text" id="addMenuName" required placeholder="เช่น ลาบหมู, ต้มแซ่บ"
+                               class="w-full border border-slate-300 rounded-xl p-2.5 outline-none focus:border-emerald-500 text-slate-800 font-bold">
                     </div>
 
-                    <!-- ช่องกรอกราคา 3 กลุ่ม -->
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-3 gap-2 pt-1">
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-600 mb-1 text-center truncate">ชาวบ้าน (P1)</label>
-                            <input type="number" id="addMenuPopupPrice1" placeholder="0" 
-                                   onfocus="this.select()"
-                                   class="w-full text-xs p-2.5 border border-slate-200 rounded-xl text-center font-bold text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500">
+                            <label class="block text-slate-600 font-bold mb-1 text-[11px] text-center">ราคา ชาวบ้าน</label>
+                            <input type="number" id="addMenuPrice1" value="0" min="0" onfocus="this.select()"
+                                   class="w-full border border-slate-300 rounded-xl p-2 text-center font-bold text-slate-700 outline-none focus:border-emerald-500">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-600 mb-1 text-center truncate">นักเที่ยว (P2)</label>
-                            <input type="number" id="addMenuPopupPrice2" placeholder="0" 
-                                   onfocus="this.select()"
-                                   class="w-full text-xs p-2.5 border border-slate-200 rounded-xl text-center font-bold text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500">
+                            <label class="block text-slate-600 font-bold mb-1 text-[11px] text-center">นักท่องเที่ยว</label>
+                            <input type="number" id="addMenuPrice2" value="0" min="0" onfocus="this.select()"
+                                   class="w-full border border-slate-300 rounded-xl p-2 text-center font-bold text-slate-700 outline-none focus:border-emerald-500">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-600 mb-1 text-center truncate">สบายดี (P3)</label>
-                            <input type="number" id="addMenuPopupPrice3" placeholder="0" 
-                                   onfocus="this.select()"
-                                   class="w-full text-xs p-2.5 border border-slate-200 rounded-xl text-center font-bold text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500">
+                            <label class="block text-slate-600 font-bold mb-1 text-[11px] text-center">สบายดี</label>
+                            <input type="number" id="addMenuPrice3" value="0" min="0" onfocus="this.select()"
+                                   class="w-full border border-slate-300 rounded-xl p-2 text-center font-bold text-slate-700 outline-none focus:border-emerald-500">
                         </div>
                     </div>
 
-                    <!-- ปุ่มกด ยกเลิก / บันทึก -->
-                    <div class="grid grid-cols-2 gap-2 pt-2">
+                    <div class="pt-3 grid grid-cols-2 gap-2">
                         <button type="button" onclick="AddMenuPopup.close()" 
-                                class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition cursor-pointer">
+                                class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl transition cursor-pointer">
                             ยกเลิก
                         </button>
                         <button type="submit" id="addMenuSubmitBtn"
-                                class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer">
-                            บันทึกเมนู
+                                class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow transition cursor-pointer">
+                            💾 บันทึกเมนู
                         </button>
                     </div>
                 </form>
             </div>
+        </div>
         `;
-
-        document.body.appendChild(overlay);
-        this.overlayEl = overlay;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
     },
 
-    /**
-     * เปิดใช้งาน Pop-up
-     * @param {Object} category - ออบเจกต์หมวดหมู่ { id, name }
-     * @param {Function} onSuccess - Callback function เมื่อบันทึกสำเร็จ (ส่งค่า newMenu กลับไป)
-     */
-    open({ category, onSuccess }) {
-        this.init();
-        this.categoryId = category.id || category;
-        this.onSuccessCallback = onSuccess;
-
-        const catName = category.name ? ` (${category.name})` : '';
-        document.getElementById('addMenuCategoryTitle').innerText = `เพิ่มเมนูใหม่${catName}`;
+    open(groupId) {
+        this.currentGroupId = groupId;
+        document.getElementById('addMenuName').value = '';
+        document.getElementById('addMenuPrice1').value = '0';
+        document.getElementById('addMenuPrice2').value = '0';
+        document.getElementById('addMenuPrice3').value = '0';
         
-        // ล้างค่าข้อมูลในฟอร์ม
-        document.getElementById('addMenuPopupForm').reset();
-
-        this.overlayEl.style.display = 'flex';
-        setTimeout(() => {
-            document.getElementById('addMenuPopupName')?.focus();
-        }, 100);
+        document.getElementById('addMenuModal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('addMenuName').focus(), 100);
     },
 
     close() {
-        if (this.overlayEl) {
-            this.overlayEl.style.display = 'none';
-        }
+        document.getElementById('addMenuModal').classList.add('hidden');
+        this.currentGroupId = null;
     },
 
-    async handleSubmit(e) {
-        e.preventDefault();
-
-        const nameInput = document.getElementById('addMenuPopupName');
-        const p1Input = document.getElementById('addMenuPopupPrice1');
-        const p2Input = document.getElementById('addMenuPopupPrice2');
-        const p3Input = document.getElementById('addMenuPopupPrice3');
+    async submitForm(event) {
+        event.preventDefault();
         const submitBtn = document.getElementById('addMenuSubmitBtn');
-
-        const name = nameInput.value.trim();
-        const price_1 = parseFloat(p1Input.value) || 0;
-        const price_2 = parseFloat(p2Input.value) || 0;
-        const price_3 = parseFloat(p3Input.value) || 0;
+        const name = document.getElementById('addMenuName').value.trim();
+        const price1 = parseFloat(document.getElementById('addMenuPrice1').value) || 0;
+        const price2 = parseFloat(document.getElementById('addMenuPrice2').value) || 0;
+        const price3 = parseFloat(document.getElementById('addMenuPrice3').value) || 0;
 
         if (!name) {
-            alert('กรุณากรอกชื่อเมนูอาหาร');
-            return;
-        }
-
-        // ค้นหาตัวเชื่อมต่อ Supabase
-        let client = null;
-        if (typeof supabaseClient !== 'undefined') client = supabaseClient;
-        else if (typeof window.supabaseClient !== 'undefined') client = window.supabaseClient;
-        else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
-            client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        }
-
-        if (!client) {
-            alert('❌ ไม่พบระบบเชื่อมต่อฐานข้อมูล Supabase');
+            alert('กรุณากรอกชื่อรายการอาหาร');
             return;
         }
 
@@ -143,34 +99,27 @@ const AddMenuPopup = {
             submitBtn.innerText = '⏳ กำลังบันทึก...';
 
             const payload = {
-                group_id: parseInt(this.categoryId) || this.categoryId,
                 name: name,
-                price_1: price_1,
-                price_2: price_2,
-                price_3: price_3
+                group_id: this.currentGroupId,
+                price_1: price1,
+                price_2: price2,
+                price_3: price3
             };
 
-            const { data, error } = await client
-                .from('foods')
-                .insert([payload])
-                .select();
+            const { error } = await this.db.from('foods').insert([payload]);
 
             if (error) throw error;
 
-            const newFoodItem = data && data.length > 0 ? data[0] : payload;
-
             this.close();
-
-            if (this.onSuccessCallback) {
-                this.onSuccessCallback(newFoodItem);
+            if (typeof this.onSuccessCallback === 'function') {
+                await this.onSuccessCallback();
             }
-
         } catch (err) {
-            console.error('Error adding menu:', err);
-            alert('❌ เกิดข้อผิดพลาดในการบันทึกเมนู: ' + err.message);
+            console.error("Error adding menu:", err);
+            alert(`เกิดข้อผิดพลาด: ${err.message}`);
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerText = 'บันทึกเมนู';
+            submitBtn.innerText = '💾 บันทึกเมนู';
         }
     }
 };
