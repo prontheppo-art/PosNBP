@@ -1,125 +1,115 @@
 // AddMenuPopup.js
+
 const AddMenuPopup = {
-    db: null,
-    currentGroupId: null,
-    onSuccessCallback: null,
+    open: function ({ category, onSave }) {
+        this.category = category || { name: '' };
+        this.onSave = onSave;
 
-    init(dbInstance, onSuccess) {
-        this.db = dbInstance;
-        this.onSuccessCallback = onSuccess;
-        this.injectModalHTML();
-    },
+        const existingModal = document.getElementById('addMenuModalOverlay');
+        if (existingModal) existingModal.remove();
 
-    injectModalHTML() {
-        if (document.getElementById('addMenuModal')) return;
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'addMenuModalOverlay';
+        modalOverlay.className = 'custom-modal-overlay active';
 
-        const modalHTML = `
-        <div id="addMenuModal" class="hidden fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-3 backdrop-blur-sm">
-            <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border-2 border-emerald-600 flex flex-col">
-                <div class="bg-emerald-600 text-white font-bold p-3.5 text-sm flex items-center justify-between shrink-0">
-                    <span class="flex items-center gap-1.5">➕ เพิ่มเมนูอาหารใหม่</span>
-                    <button type="button" onclick="AddMenuPopup.close()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-sm cursor-pointer">
-                        ✕
-                    </button>
+        // ปรับ HTML ให้หน้าตาเหมือนรูปที่ 2 (3 ช่องราคา + ชื่อหมวดในวงเล็บ)
+        modalOverlay.innerHTML = `
+            <div class="custom-modal-box relative p-5 rounded-[2rem] max-w-sm w-full bg-white shadow-2xl transition-all border-none">
+                
+                <!-- ส่วนหัว Header -->
+                <div class="mb-4 pb-2 border-b border-slate-100">
+                    <h3 class="text-base font-extrabold text-slate-800">
+                        เพิ่มเมนูใหม่ ${this.category.name ? `(${this.category.name})` : ''}
+                    </h3>
+                    ${this.category.name ? `<p class="text-xs font-bold text-emerald-600 mt-0.5">หมวดหมู่: ${this.category.name}</p>` : ''}
                 </div>
 
-                <form id="addMenuForm" onsubmit="AddMenuPopup.submitForm(event)" class="p-4 space-y-3 text-xs">
+                <!-- ฟอร์มกรอกข้อมูล -->
+                <form id="formAddMenu" class="space-y-3.5">
+                    <!-- ช่องชื่อเมนู -->
                     <div>
-                        <label class="block text-slate-700 font-bold mb-1">ชื่อรายการอาหาร <span class="text-red-500">*</span></label>
-                        <input type="text" id="addMenuName" required placeholder="เช่น ลาบหมู, ต้มแซ่บ"
-                               class="w-full border border-slate-300 rounded-xl p-2.5 outline-none focus:border-emerald-500 text-slate-800 font-bold">
+                        <label class="block text-xs font-extrabold text-slate-700 mb-1">
+                            ชื่อเมนูอาหาร <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="inputMenuName" required placeholder="ระบุชื่อเมนู" 
+                               class="w-full px-3.5 py-2.5 border border-slate-200 rounded-2xl text-xs font-bold focus:outline-none focus:border-emerald-500 bg-slate-50/30">
                     </div>
 
+                    <!-- ช่องราคา 3 ระดับ (ชาวบ้าน / นักท่องเที่ยว / สบายดี) -->
                     <div class="grid grid-cols-3 gap-2 pt-1">
                         <div>
-                            <label class="block text-slate-600 font-bold mb-1 text-[11px] text-center">ราคา ชาวบ้าน</label>
-                            <input type="number" id="addMenuPrice1" value="0" min="0" onfocus="this.select()"
-                                   class="w-full border border-slate-300 rounded-xl p-2 text-center font-bold text-slate-700 outline-none focus:border-emerald-500">
+                            <label class="block text-[11px] font-extrabold text-slate-600 mb-1 text-center">
+                                ชาวบ้าน (P1)
+                            </label>
+                            <input type="number" id="inputPrice1" value="0" min="0" onfocus="this.select()"
+                                   class="w-full px-2 py-2 border border-slate-200 rounded-2xl text-center text-xs font-extrabold text-slate-700 focus:outline-none focus:border-emerald-500 bg-slate-50/30">
                         </div>
                         <div>
-                            <label class="block text-slate-600 font-bold mb-1 text-[11px] text-center">นักท่องเที่ยว</label>
-                            <input type="number" id="addMenuPrice2" value="0" min="0" onfocus="this.select()"
-                                   class="w-full border border-slate-300 rounded-xl p-2 text-center font-bold text-slate-700 outline-none focus:border-emerald-500">
+                            <label class="block text-[11px] font-extrabold text-slate-600 mb-1 text-center">
+                                นักเที่ยว (P2)
+                            </label>
+                            <input type="number" id="inputPrice2" value="0" min="0" onfocus="this.select()"
+                                   class="w-full px-2 py-2 border border-slate-200 rounded-2xl text-center text-xs font-extrabold text-slate-700 focus:outline-none focus:border-emerald-500 bg-slate-50/30">
                         </div>
                         <div>
-                            <label class="block text-slate-600 font-bold mb-1 text-[11px] text-center">สบายดี</label>
-                            <input type="number" id="addMenuPrice3" value="0" min="0" onfocus="this.select()"
-                                   class="w-full border border-slate-300 rounded-xl p-2 text-center font-bold text-slate-700 outline-none focus:border-emerald-500">
+                            <label class="block text-[11px] font-extrabold text-slate-600 mb-1 text-center">
+                                สบายดี (P3)
+                            </label>
+                            <input type="number" id="inputPrice3" value="0" min="0" onfocus="this.select()"
+                                   class="w-full px-2 py-2 border border-slate-200 rounded-2xl text-center text-xs font-extrabold text-slate-700 focus:outline-none focus:border-emerald-500 bg-slate-50/30">
                         </div>
                     </div>
 
-                    <div class="pt-3 grid grid-cols-2 gap-2">
-                        <button type="button" onclick="AddMenuPopup.close()" 
-                                class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl transition cursor-pointer">
+                    <!-- ปุ่มควบคุม (ยกเลิก / บันทึกเมนู) -->
+                    <div class="grid grid-cols-2 gap-2.5 pt-3">
+                        <button type="button" id="btnCancelAddMenu" 
+                                class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-extrabold rounded-2xl transition text-center">
                             ยกเลิก
                         </button>
-                        <button type="submit" id="addMenuSubmitBtn"
-                                class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow transition cursor-pointer">
-                            💾 บันทึกเมนู
+                        <button type="submit" 
+                                class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-extrabold rounded-2xl transition shadow-xs text-center">
+                            บันทึกเมนู
                         </button>
                     </div>
                 </form>
             </div>
-        </div>
         `;
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-    },
 
-    open(groupId) {
-        this.currentGroupId = groupId;
-        document.getElementById('addMenuName').value = '';
-        document.getElementById('addMenuPrice1').value = '0';
-        document.getElementById('addMenuPrice2').value = '0';
-        document.getElementById('addMenuPrice3').value = '0';
-        
-        document.getElementById('addMenuModal').classList.remove('hidden');
-        setTimeout(() => document.getElementById('addMenuName').focus(), 100);
-    },
+        document.body.appendChild(modalOverlay);
 
-    close() {
-        document.getElementById('addMenuModal').classList.add('hidden');
-        this.currentGroupId = null;
-    },
+        const closeModal = () => modalOverlay.remove();
+        modalOverlay.querySelector('#btnCancelAddMenu').onclick = closeModal;
 
-    async submitForm(event) {
-        event.preventDefault();
-        const submitBtn = document.getElementById('addMenuSubmitBtn');
-        const name = document.getElementById('addMenuName').value.trim();
-        const price1 = parseFloat(document.getElementById('addMenuPrice1').value) || 0;
-        const price2 = parseFloat(document.getElementById('addMenuPrice2').value) || 0;
-        const price3 = parseFloat(document.getElementById('addMenuPrice3').value) || 0;
+        // ดักจับการส่งข้อมูลบันทึก
+        modalOverlay.querySelector('#formAddMenu').onsubmit = (e) => {
+            e.preventDefault();
+            const name = modalOverlay.querySelector('#inputMenuName').value.trim();
+            const price1 = parseFloat(modalOverlay.querySelector('#inputPrice1').value) || 0;
+            const price2 = parseFloat(modalOverlay.querySelector('#inputPrice2').value) || 0;
+            const price3 = parseFloat(modalOverlay.querySelector('#inputPrice3').value) || 0;
 
-        if (!name) {
-            alert('กรุณากรอกชื่อรายการอาหาร');
-            return;
-        }
-
-        try {
-            submitBtn.disabled = true;
-            submitBtn.innerText = '⏳ กำลังบันทึก...';
-
-            const payload = {
+            const newMenuData = {
+                category_id: this.category.id || this.category.group_id,
                 name: name,
-                group_id: this.currentGroupId,
                 price_1: price1,
                 price_2: price2,
-                price_3: price3
+                price_3: price3,
+                price: price1 // ใช้ราคานี้เป็นราคาเริ่มต้นสำรอง
             };
 
-            const { error } = await this.db.from('foods').insert([payload]);
-
-            if (error) throw error;
-
-            this.close();
-            if (typeof this.onSuccessCallback === 'function') {
-                await this.onSuccessCallback();
+            if (typeof this.onSave === 'function') {
+                this.onSave(newMenuData);
             }
-        } catch (err) {
-            console.error("Error adding menu:", err);
-            alert(`เกิดข้อผิดพลาด: ${err.message}`);
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.innerText = '💾 บันทึกเมนู';
-        }
+
+            closeModal();
+        };
+
+        // Focus ที่ช่องชื่อเมนูอัตโนมัติ
+        setTimeout(() => {
+            const inputName = modalOverlay.querySelector('#inputMenuName');
+            if (inputName) inputName.focus();
+        }, 100);
     }
 };
+
+window.AddMenuPopup = AddMenuPopup;

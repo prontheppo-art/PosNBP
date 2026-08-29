@@ -65,7 +65,6 @@
                         </div>
                     </div>
 
-                    <!-- แก้ไขลิงก์ปลายทางเป็น PageReport.html ตามสั่ง โดยคงตำแหน่งและสไตล์เดิมไว้ -->
                     <a href="PageReport.html" class="bg-rose-500 hover:bg-rose-600 text-white font-bold px-4 py-2.5 rounded-2xl text-xs text-center transition flex items-center justify-center gap-1 shadow-sm shrink-0 no-underline">
                         🏠 หน้าหลัก
                     </a>
@@ -97,6 +96,13 @@
 
         let db;
         let allOrders = [];
+
+        // คำนวณวันที่ปัจจุบันของประเทศไทย (GMT+7)
+        function getThaiToday() {
+            const now = new Date();
+            const tzOffset = 7 * 60; // 7 ชั่วโมงเป็นนาที
+            return new Date(now.getTime() + (tzOffset + now.getTimezoneOffset()) * 60000);
+        }
 
         function cleanGroupName(name) {
             if (!name) return 'ทั่วไป';
@@ -139,13 +145,13 @@
             return dateString;
         }
 
-        // ฟังก์ชันประมวลผลนับจำนวนบิลออเดอร์ในแต่ละวัน (กรองเอาเฉพาะบิลที่ไม่ถูกยกเลิก/รอดำเนินการ)
+        // ฟังก์ชันประมวลผลนับจำนวนบิลออเดอร์ในแต่ละวัน (คัดเฉพาะที่ไม่ถูก cancel)
         function getOrderCounts() {
             const counts = {};
             allOrders.forEach(order => {
                 const dateStr = getOrderDateStr(order);
                 const status = (order.status || '').toLowerCase();
-                if (dateStr && status !== 'cancelled' && status !== 'pending') {
+                if (dateStr && status !== 'cancelled') {
                     counts[dateStr] = (counts[dateStr] || 0) + 1;
                 }
             });
@@ -207,9 +213,9 @@
         async function fetchOrdersFromDatabase() {
             const container = document.getElementById('orderHistoryList');
             try {
+                // ดึงข้อมูลรายการออเดอร์ทั้งหมด ยกเว้นรายการที่ยกเลิก (cancelled)
                 const { data, error } = await db.from('orders')
                     .select('*')
-                    .neq('status', 'pending')
                     .neq('status', 'cancelled')
                     .order('id', { ascending: true });
                 
@@ -260,10 +266,11 @@
                 CalendarSystem.selectedDateStr = "";
             }
 
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
+            // ใช้เวลาประเทศไทยในการกรองข้อมูล
+            const thaiNow = getThaiToday();
+            const year = thaiNow.getFullYear();
+            const month = String(thaiNow.getMonth() + 1).padStart(2, '0');
+            const day = String(thaiNow.getDate()).padStart(2, '0');
             const todayStr = `${year}-${month}-${day}`;
 
             let filtered = allOrders;
@@ -273,7 +280,7 @@
                 filtered = allOrders.filter(o => getOrderDateStr(o) === todayStr);
                 labelText = "ยอดรวมวันนี้";
             } else if (type === 'week') {
-                const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const todayLocal = new Date(thaiNow.getFullYear(), thaiNow.getMonth(), thaiNow.getDate());
                 const dayOfWeek = todayLocal.getDay();
                 const distanceToMonday = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
                 

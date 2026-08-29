@@ -82,12 +82,15 @@
     let db;
     let allOrdersCache = [];
     
-    // ฟังก์ชั่นดึงวันที่ปัจจุบันในรูปแบบ YYYY-MM-DD
+    // ฟังก์ชั่นดึงวันที่ปัจจุบันของประเทศไทย (YYYY-MM-DD)
     function getTodayString() {
         const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
+        const tzOffset = 7 * 60; // 7 ชั่วโมงเป็นนาที
+        const localTime = new Date(now.getTime() + (tzOffset + now.getTimezoneOffset()) * 60000);
+
+        const year = localTime.getFullYear();
+        const month = String(localTime.getMonth() + 1).padStart(2, '0');
+        const day = String(localTime.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
 
@@ -116,9 +119,9 @@
         allOrdersCache.forEach(o => {
             const rawDate = o.order_date || o.created_at || o.date;
             if (rawDate) {
-                const oDate = rawDate.split('T')[0].split(' ')[0];
+                const oDate = String(rawDate).split('T')[0].split(' ')[0];
                 const status = (o.status || '').toLowerCase();
-                if (status !== 'cancelled' && status !== 'pending') {
+                if (status !== 'cancelled') {
                     counts[oDate] = (counts[oDate] || 0) + 1;
                 }
             }
@@ -142,7 +145,6 @@
         if (calendarModal && !calendarModal.classList.contains('hidden') && calendarModal.style.display !== 'none') {
             const calendarContent = calendarModal.querySelector('.calendar-content') || calendarModal.querySelector('.bg-white') || calendarModal.children[0];
             
-            // หากจุดที่แตะไม่ได้อยู่ในตัวปฏิทิน และไม่ได้กดปุ่มเปิดปฏิทิน ให้ปิด Modal ปฏิทินทันที
             if (calendarContent && !calendarContent.contains(e.target) && !e.target.closest('#btnSelectedDate')) {
                 if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.close === 'function') {
                     CalendarSystem.close();
@@ -202,11 +204,11 @@
             
             const rawDate = o.order_date || o.created_at || o.date;
             if (rawDate) {
-                oDate = rawDate.split('T')[0].split(' ')[0];
+                oDate = String(rawDate).split('T')[0].split(' ')[0];
             }
             
             const status = (o.status || '').toLowerCase();
-            return oDate === currentSelectedDate && status !== 'cancelled' && status !== 'pending';
+            return oDate === currentSelectedDate && status !== 'cancelled';
         });
         
         if (filtered.length === 0) {

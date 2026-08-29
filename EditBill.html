@@ -110,11 +110,11 @@
             <div class="bg-amber-50/70 p-2.5 rounded-2xl border border-amber-200/80 shadow-sm">
                 <label class="block text-[11px] font-bold text-slate-700 mb-1">📍 เลือกออเดอร์ที่ต้องการตรวจสอบ / แก้ไข:</label>
                 <div class="flex gap-2">
-                    <button type="button" onclick="openOrderSearchModal()" class="w-full p-2 border border-amber-300 rounded-xl bg-white text-xs font-semibold text-slate-700 flex justify-between items-center shadow-xs hover:border-amber-400 active:scale-[0.99] transition">
+                    <button type="button" onclick="openOrderSearchModal()" class="w-full p-2 border border-amber-300 rounded-xl bg-white text-xs font-semibold text-slate-700 flex justify-between items-center shadow-xs hover:border-amber-400 active:scale-[0.99] transition cursor-pointer">
                         <span id="selectedOrderDisplay" class="truncate font-bold text-amber-900">-- คลิกเพื่อเลือกออเดอร์ --</span>
                         <i class="fas fa-chevron-down text-amber-500 text-xs shrink-0 ml-1"></i>
                     </button>
-                    <button type="button" onclick="openOrderSearchModal()" class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white px-4 py-2 rounded-xl font-bold text-xs transition shadow-sm shrink-0">
+                    <button type="button" onclick="openOrderSearchModal()" class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white px-4 py-2 rounded-xl font-bold text-xs transition shadow-sm shrink-0 cursor-pointer">
                         ดึงข้อมูล
                     </button>
                 </div>
@@ -141,7 +141,7 @@
                     </div>
 
                     <div id="locationBtnContainer" class="w-5/12 hidden">
-                        <button type="button" id="btnSelectLocation" onclick="openLocationModal()" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-1.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1 shadow-sm transition truncate">
+                        <button type="button" id="btnSelectLocation" onclick="openLocationModal()" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-1.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1 shadow-sm transition truncate cursor-pointer">
                             <span>📍</span>
                             <span id="locationBtnText" class="truncate">เลือกสถานที่</span>
                         </button>
@@ -204,7 +204,8 @@
 
         <!-- [ส่วนล่าง] ปุ่มการทำงาน (3 ช่องเท่ากัน) -->
         <div class="grid grid-cols-3 gap-2 shrink-0">
-            <a href="PageAdmin.html" class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-2.5 px-2 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 no-underline">
+            <!-- แก้ไขลิงก์เป็น admin.html เพื่อให้ย้อนกลับหน้าแดชบอร์ดผู้ดูแล -->
+            <a href="admin.html" class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-2.5 px-2 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 no-underline">
                 <i class="fas fa-user-shield"></i> ผู้ดูแล
             </a>
             <button onclick="deleteCurrentOrder()" class="bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold py-2.5 px-2 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
@@ -254,7 +255,7 @@
         <div class="custom-modal-box border-t-4 border-amber-500">
             <div class="flex justify-between items-center mb-3 pb-2 border-b">
                 <h3 class="font-bold text-base text-slate-800 flex items-center gap-1.5">📍 เลือก Location</h3>
-                <button onclick="closeModal('locationModal')" class="text-gray-400 hover:text-gray-600 font-bold text-lg px-1">✕</button>
+                <button onclick="closeModal('locationModal')" class="text-gray-400 hover:text-gray-600 font-bold text-lg px-1 cursor-pointer">✕</button>
             </div>
             <div id="locationGrid" class="grid grid-cols-2 gap-2.5 overflow-y-auto py-1 pr-1 max-h-[60vh]"></div>
         </div>
@@ -268,7 +269,7 @@
                     <h3 class="font-bold text-base text-slate-800 flex items-center gap-1.5">🏷️ เลือก Zone / ห้องพัก</h3>
                     <span id="zoneModalSubTitle" class="text-xs text-amber-600 font-semibold block"></span>
                 </div>
-                <button onclick="closeModal('zoneModal')" class="text-gray-400 hover:text-gray-600 font-bold text-lg px-1">✕</button>
+                <button onclick="closeModal('zoneModal')" class="text-gray-400 hover:text-gray-600 font-bold text-lg px-1 cursor-pointer">✕</button>
             </div>
             <div id="zoneGrid" class="grid grid-cols-2 gap-2.5 overflow-y-auto py-1 pr-1 max-h-[60vh]"></div>
         </div>
@@ -290,6 +291,34 @@
         }, { passive: false });
 
         document.addEventListener('DOMContentLoaded', initApp);
+
+        function getThaiToday() {
+            const now = new Date();
+            const tzOffset = 7 * 60;
+            return new Date(now.getTime() + (tzOffset + now.getTimezoneOffset()) * 60000);
+        }
+
+        function getOrderDateStr(order) {
+            const rawDate = order.order_date || order.created_at || order.date;
+            if (!rawDate) return '';
+            if (typeof rawDate === 'string') return rawDate.split('T')[0].split(' ')[0];
+            const d = new Date(rawDate);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function formatDateThai(dateString) {
+            if (!dateString) return '';
+            const parts = dateString.split('T')[0].split(' ')[0].split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return dateString;
+        }
+
+        function parseLocalDate(dateStr) {
+            if (!dateStr) return new Date();
+            const cleanStr = dateStr.split('T')[0].split(' ')[0];
+            const [y, m, d] = cleanStr.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
 
         async function initApp() {
             if (typeof supabaseClient !== 'undefined') {
@@ -315,9 +344,184 @@
             }
 
             if (dbClient) {
-                fetchAllOrders();
-                fetchLocationsAndZones();
+                await fetchAllOrders();
+                await fetchLocationsAndZones();
             }
+        }
+
+        async function fetchAllOrders() {
+            try {
+                const { data, error } = await dbClient.from('orders')
+                    .select('*')
+                    .neq('status', 'cancelled')
+                    .order('id', { ascending: false });
+
+                if (error) throw error;
+                allOrdersList = data || [];
+                renderModalOrders(allOrdersList);
+            } catch (err) {
+                console.error('Error fetching orders:', err);
+                document.getElementById('modalOrderList').innerHTML = `<div class="text-center text-red-400 text-xs py-10">โหลดออเดอร์ไม่สำเร็จ (${err.message})</div>`;
+            }
+        }
+
+        function renderModalOrders(orders) {
+            const container = document.getElementById('modalOrderList');
+            if (!orders || orders.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-400 text-xs py-10">ไม่พบรายการออเดอร์</div>`;
+                return;
+            }
+
+            container.innerHTML = orders.map(o => {
+                const total = o.total_amount || o.total_price || o.total || 0;
+                const group = o.customer_group || o.group_name || 'ทั่วไป';
+                const date = formatDateThai(getOrderDateStr(o));
+                return `
+                    <div onclick="selectOrderToEdit(${o.id})" class="p-3 bg-amber-50/50 hover:bg-amber-100/60 border border-amber-200/80 rounded-2xl cursor-pointer transition flex justify-between items-center active:scale-[0.98]">
+                        <div>
+                            <div class="font-bold text-xs text-slate-800">ออเดอร์ #${o.id} <span class="text-[10px] text-slate-500 font-normal">(${date})</span></div>
+                            <div class="text-[11px] text-slate-600 mt-0.5">กลุ่ม: <span class="font-semibold text-amber-800">${group}</span></div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-black text-xs text-green-700">${Number(total).toLocaleString()} ฿</div>
+                            <span class="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">เลือก</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectOrderToEdit(orderId) {
+            const order = allOrdersList.find(o => o.id == orderId);
+            if (!order) return;
+
+            currentOrderData = order;
+            document.getElementById('selectedOrderDisplay').textContent = `ออเดอร์ #${order.id} - ${formatDateThai(getOrderDateStr(order))}`;
+            document.getElementById('displayOrderId').textContent = order.id;
+
+            // ตั้งค่าเบอร์โทร
+            document.getElementById('customerPhoneInput').value = order.phone || order.customer_phone || '';
+
+            // ตั้งค่ากลุ่มลูกค้า
+            const groupName = order.customer_group || order.group_name || 'ชาวบ้าน';
+            if (groupName.includes('นักท่องเที่ยว')) selectCustomerGroup(2, 'นักท่องเที่ยว');
+            else if (groupName.includes('สบายดี')) selectCustomerGroup(3, 'สบายดี');
+            else selectCustomerGroup(1, 'ชาวบ้าน');
+
+            // ตั้งค่ารายการสินค้า
+            let items = order.items || order.order_items;
+            if (typeof items === 'string') {
+                try { items = JSON.parse(items); } catch(e) { items = []; }
+            }
+            cartItems = Array.isArray(items) ? items : [];
+
+            renderCartPreview();
+            closeOrderSearchModal();
+        }
+
+        function filterSearchOrders(type, btn) {
+            document.querySelectorAll('.modal-filter-btn').forEach(b => {
+                b.classList.remove('bg-white', 'shadow-xs', 'text-gray-800');
+                b.classList.add('text-gray-500');
+            });
+            if (btn) {
+                btn.classList.add('bg-white', 'shadow-xs', 'text-gray-800');
+                btn.classList.remove('text-gray-500');
+            }
+
+            document.getElementById('modalDateButtonText').textContent = "📅 เลือกวัน";
+            const thaiNow = getThaiToday();
+            const year = thaiNow.getFullYear();
+            const month = String(thaiNow.getMonth() + 1).padStart(2, '0');
+            const day = String(thaiNow.getDate()).padStart(2, '0');
+            const todayStr = `${year}-${month}-${day}`;
+
+            let filtered = allOrdersList;
+            if (type === 'today') {
+                filtered = allOrdersList.filter(o => getOrderDateStr(o) === todayStr);
+            } else if (type === 'week') {
+                const todayLocal = new Date(thaiNow.getFullYear(), thaiNow.getMonth(), thaiNow.getDate());
+                const dayOfWeek = todayLocal.getDay();
+                const distanceToMonday = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+                const startOfWeek = new Date(todayLocal);
+                startOfWeek.setDate(todayLocal.getDate() - distanceToMonday);
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+                filtered = allOrdersList.filter(o => {
+                    const orderDateStr = getOrderDateStr(o);
+                    if (!orderDateStr) return false;
+                    const orderDate = parseLocalDate(orderDateStr);
+                    return orderDate >= startOfWeek && orderDate <= endOfWeek;
+                });
+            } else if (type === 'month') {
+                filtered = allOrdersList.filter(o => getOrderDateStr(o).startsWith(`${year}-${month}`));
+            }
+
+            renderModalOrders(filtered);
+        }
+
+        function openCustomCalendarInModal() {
+            if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.open === 'function') {
+                const counts = {};
+                allOrdersList.forEach(o => {
+                    const d = getOrderDateStr(o);
+                    if (d) counts[d] = (counts[d] || 0) + 1;
+                });
+                CalendarSystem.open(CalendarSystem.selectedDateStr, counts);
+            } else {
+                alert("ระบบปฏิทินไม่พร้อมใช้งาน");
+            }
+        }
+
+        function renderCartPreview() {
+            const list = document.getElementById('cartPreviewList');
+            if (cartItems.length === 0) {
+                list.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-400 font-semibold text-xs">ไม่มีรายการสินค้าในออเดอร์นี้</td></tr>`;
+                calculateGrandTotal();
+                return;
+            }
+
+            let totalQty = 0;
+            list.innerHTML = cartItems.map((item, index) => {
+                const qty = parseFloat(item.qty || item.quantity || 1);
+                const price = parseFloat(item.price || item.unit_price || 0);
+                const name = item.food_name || item.name || 'รายการสินค้า';
+                const totalItemPrice = price * qty;
+                totalQty += qty;
+
+                return `
+                    <tr>
+                        <td class="py-2 pl-1 font-semibold text-slate-800">${name}</td>
+                        <td class="py-2 text-center font-bold text-slate-700">${qty}</td>
+                        <td class="py-2 text-right pr-1 font-extrabold text-slate-800">${totalItemPrice.toLocaleString()}</td>
+                        <td class="py-2 text-center">
+                            <button onclick="removeCartItem(${index})" class="text-red-500 hover:text-red-700 font-bold text-xs p-1">✕</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('cartCountText').textContent = `${cartItems.length} รายการ | ${totalQty} ชิ้น`;
+            calculateGrandTotal();
+        }
+
+        function removeCartItem(index) {
+            cartItems.splice(index, 1);
+            renderCartPreview();
+        }
+
+        function calculateGrandTotal() {
+            const itemsSum = cartItems.reduce((sum, i) => {
+                const price = parseFloat(i.price || i.unit_price || 0);
+                const qty = parseFloat(i.qty || i.quantity || 1);
+                return sum + (price * qty);
+            }, 0);
+
+            const deliveryFee = parseFloat(document.getElementById('inputDeliveryFee').value || 0);
+            const total = itemsSum + deliveryFee;
+
+            document.getElementById('cartTotalPrice').textContent = `รวม ${total.toLocaleString()}.-`;
         }
 
         async function fetchLocationsAndZones() {
@@ -348,11 +552,6 @@
             if (groupId === 2) {
                 locationBtnContainer.classList.remove('hidden');
                 deliveryBox.classList.remove('hidden');
-
-                const currentLoc = document.getElementById('selectedLocationName').value;
-                if (!currentLoc) {
-                    openLocationModal();
-                }
             } else {
                 locationBtnContainer.classList.add('hidden');
                 deliveryBox.classList.add('hidden');
@@ -442,11 +641,6 @@
             }
         }
 
-        // Functions placeholder for order loading logic
-        async function fetchAllOrders() {
-            // Implementation provided by backend integration
-        }
-
         function openOrderSearchModal() {
             const modal = document.getElementById('orderSearchModal');
             const box = document.getElementById('orderSearchBox');
@@ -467,16 +661,50 @@
             }
         }
 
-        function calculateGrandTotal() {
-            // Recalculate totals
+        async function deleteCurrentOrder() {
+            if (!currentOrderData) {
+                alert('กรุณาเลือกออเดอร์ที่ต้องการลบก่อนครับ');
+                return;
+            }
+            if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบออเดอร์ #${currentOrderData.id}?`)) return;
+
+            try {
+                const { error } = await dbClient.from('orders').delete().eq('id', currentOrderData.id);
+                if (error) throw error;
+
+                alert('ลบออเดอร์สำเร็จเรียบร้อย');
+                location.reload();
+            } catch (err) {
+                alert(`เกิดข้อผิดพลาดในการลบ: ${err.message}`);
+            }
         }
 
-        function deleteCurrentOrder() {
-            // Delete order logic
-        }
+        async function saveOrderChanges() {
+            if (!currentOrderData) {
+                alert('กรุณาเลือกออเดอร์ที่ต้องการบันทึกก่อนครับ');
+                return;
+            }
 
-        function saveOrderChanges() {
-            // Save order changes logic
+            const itemsSum = cartItems.reduce((sum, i) => sum + (parseFloat(i.price || 0) * parseFloat(i.qty || 1)), 0);
+            const deliveryFee = parseFloat(document.getElementById('inputDeliveryFee').value || 0);
+            const grandTotal = itemsSum + deliveryFee;
+
+            const updatedPayload = {
+                customer_group: document.getElementById('selectedGroupName').value,
+                phone: document.getElementById('customerPhoneInput').value,
+                items: JSON.stringify(cartItems),
+                total_amount: grandTotal
+            };
+
+            try {
+                const { error } = await dbClient.from('orders').update(updatedPayload).eq('id', currentOrderData.id);
+                if (error) throw error;
+
+                alert('บันทึกการแก้ไขเรียบร้อยแล้ว');
+                location.reload();
+            } catch (err) {
+                alert(`เกิดข้อผิดพลาดในการบันทึก: ${err.message}`);
+            }
         }
 
         function formatPhoneInput(input) {

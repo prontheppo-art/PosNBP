@@ -124,11 +124,15 @@
     let globalGroupData = {};
     let currentSelectedDate = "";
 
+    // คำนวณวันที่ปัจจุบันของประเทศไทย (GMT+7)
     function getTodayString() {
         const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
+        const tzOffset = 7 * 60; // 7 ชั่วโมงเป็นนาที
+        const localTime = new Date(now.getTime() + (tzOffset + now.getTimezoneOffset()) * 60000);
+
+        const year = localTime.getFullYear();
+        const month = String(localTime.getMonth() + 1).padStart(2, '0');
+        const day = String(localTime.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
 
@@ -145,9 +149,10 @@
         allOrdersCache.forEach(o => {
             const rawDate = o.order_date || o.created_at || o.date;
             if (rawDate) {
-                const oDate = rawDate.split('T')[0].split(' ')[0];
+                const oDate = String(rawDate).split('T')[0].split(' ')[0];
                 const status = (o.status || '').toLowerCase();
-                if (status !== 'cancelled' && status !== 'pending') {
+                // นับออเดอร์ทั้งหมดยกเว้นรายการที่ถูกยกเลิก (cancelled)
+                if (status !== 'cancelled') {
                     counts[oDate] = (counts[oDate] || 0) + 1;
                 }
             }
@@ -228,10 +233,11 @@
             let oDate = '';
             const rawDate = o.order_date || o.created_at || o.date;
             if (rawDate) {
-                oDate = rawDate.split('T')[0].split(' ')[0];
+                oDate = String(rawDate).split('T')[0].split(' ')[0];
             }
             const status = (o.status || '').toLowerCase();
-            return oDate === selectedDate && status !== 'cancelled' && status !== 'pending';
+            // ดึงข้อมูลรายการทั้งหมดยกเว้นที่ถูก cancelled (นับรวมทั้ง completed และ pending เดิม)
+            return oDate === selectedDate && status !== 'cancelled';
         });
 
         if (filteredOrders.length === 0) {
@@ -333,6 +339,12 @@
             const rawTime = o.created_at || o.order_date || o.date;
             if (rawTime && rawTime.includes('T')) {
                 let timePart = rawTime.split('T')[1];
+                if (timePart) {
+                    let parts = timePart.split(':');
+                    timeStr = ` (${parts[0]}:${parts[1]} น.)`;
+                }
+            } else if (rawTime && rawTime.includes(' ')) {
+                let timePart = rawTime.split(' ')[1];
                 if (timePart) {
                     let parts = timePart.split(':');
                     timeStr = ` (${parts[0]}:${parts[1]} น.)`;

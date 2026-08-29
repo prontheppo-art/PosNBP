@@ -1,0 +1,306 @@
+/* location.js - Component จัดการเลือกกลุ่มลูกค้าและสถานที่ */
+
+let locationsData = [];
+let zonesData = [];
+let tempSelectedLocation = null;
+
+const zoneIcons = ['🏠', '🔑', '🛋️', '🚪', '🏡', '🌿', '🛏️', '🔑'];
+
+let savedTouristLocation = localStorage.getItem('selectedLocationName') || '';
+let savedTouristZone = localStorage.getItem('selectedZoneName') || '';
+let savedCustomerPhone = localStorage.getItem('customerPhone') || '';
+
+// Render โครงสร้าง UI (ใช้ HTML เดิมทั้งหมด)
+function renderLocationComponent(targetContainerId) {
+    const container = document.getElementById(targetContainerId);
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="fixed-header">
+            <div class="bg-amber-50/50 border border-amber-200/80 rounded-2xl p-3 shadow-sm space-y-2.5">
+                
+                <div class="grid grid-cols-3 gap-2" id="groupSelectorContainer">
+                    <button type="button" onclick="selectCustomerGroup(1, 'ชาวบ้าน')" id="btn-group-1" class="group-btn-v2 active py-2.5 px-1 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer font-bold text-xs">
+                        <span class="text-sm">🏡</span>
+                        <span>ชาวบ้าน</span>
+                    </button>
+
+                    <button type="button" onclick="selectCustomerGroup(2, 'นักท่องเที่ยว')" id="btn-group-2" class="group-btn-v2 py-2.5 px-1 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer font-bold text-xs">
+                        <span class="text-sm">🧳</span>
+                        <span>นักท่องเที่ยว</span>
+                    </button>
+
+                    <button type="button" onclick="selectCustomerGroup(3, 'สบายดี')" id="btn-group-3" class="group-btn-v2 py-2.5 px-1 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer font-bold text-xs">
+                        <span class="text-sm">😊</span>
+                        <span>สบายดี</span>
+                    </button>
+                </div>
+
+                <div class="flex gap-2 items-center">
+                    <div id="phoneInputWrapper" class="flex-1 relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-700 text-xs">📞</span>
+                        <input type="tel" id="customerPhoneInput" oninput="formatPhoneInput(this); handlePhoneChange(this.value);" placeholder="เบอร์โทรศัพท์ลูกค้า (ถ้ามี)" maxlength="12" class="w-full pl-8 pr-2 py-2.5 border border-amber-200/80 rounded-xl text-xs bg-white text-slate-800 outline-none focus:border-amber-500 font-medium placeholder-gray-400">
+                    </div>
+
+                    <div id="locationBtnContainer" class="w-5/12 hidden">
+                        <button type="button" id="btnSelectLocation" onclick="openLocationModal()" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-2.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1 shadow-sm transition truncate">
+                            <span>📍</span>
+                            <span id="locationBtnText" class="truncate">เลือกสถานที่</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <input type="hidden" id="customerGroupSelect" value="1">
+                <input type="hidden" id="selectedGroupName" value="ชาวบ้าน">
+                <input type="hidden" id="selectedLocationName" value="">
+                <input type="hidden" id="selectedZoneName" value="">
+            </div>
+        </div>
+
+        <!-- Modals -->
+        <div id="locationModal" class="custom-modal-overlay" onclick="handleOutsideClick(event, 'locationModal')">
+            <div class="custom-modal-box border-t-4 border-amber-500">
+                <div class="flex justify-between items-center mb-3 pb-2 border-b">
+                    <h3 class="font-bold text-base text-slate-800 flex items-center gap-1.5">📍 เลือก Location</h3>
+                    <button onclick="closeModal('locationModal')" class="text-gray-400 hover:text-gray-600 font-bold text-lg px-1">✕</button>
+                </div>
+                <div id="locationGrid" class="grid grid-cols-2 gap-2 overflow-y-auto py-1 pr-1 max-h-[60vh]"></div>
+            </div>
+        </div>
+
+        <div id="zoneModal" class="custom-modal-overlay" onclick="handleOutsideClick(event, 'zoneModal')">
+            <div class="custom-modal-box border-t-4 border-blue-500">
+                <div class="flex justify-between items-center mb-3 pb-2 border-b">
+                    <div>
+                        <h3 class="font-bold text-base text-slate-800 flex items-center gap-1.5">🏷️ เลือก Zone / ห้องพัก</h3>
+                        <span id="zoneModalSubTitle" class="text-xs text-amber-600 font-semibold block"></span>
+                    </div>
+                    <button onclick="closeModal('zoneModal')" class="text-gray-400 hover:text-gray-600 font-bold text-lg px-1">✕</button>
+                </div>
+                <div id="zoneContainer" class="overflow-y-auto py-1 pr-1 max-h-[60vh] space-y-2"></div>
+            </div>
+        </div>
+    `;
+}
+
+// เริ่มการทำงานของ Component
+async function initLocationComponent(targetContainerId) {
+    renderLocationComponent(targetContainerId);
+    await fetchLocationsAndZones();
+    document.getElementById('customerPhoneInput').value = savedCustomerPhone;
+    selectCustomerGroup(1, 'ชาวบ้าน');
+}
+
+async function fetchLocationsAndZones() {
+    try {
+        const [locRes, zoneRes] = await Promise.all([
+            supabaseClient.from('locations').select('*'),
+            supabaseClient.from('zones').select('*')
+        ]);
+
+        if (locRes.data) locationsData = locRes.data;
+        if (zoneRes.data) zonesData = zoneRes.data;
+    } catch (err) {
+        console.error('Error fetching locations/zones:', err);
+    }
+}
+
+function handlePhoneChange(val) {
+    savedCustomerPhone = val;
+    localStorage.setItem('customerPhone', val);
+}
+
+function formatPhoneInput(input) {
+    let value = input.value.replace(/\D/g, '');
+    if (value.length > 10) value = value.slice(0, 10);
+    
+    if (value.length > 6) {
+        input.value = `${value.slice(0, 3)}-${value.slice(3, 6)}-${value.slice(6)}`;
+    } else if (value.length > 3) {
+        input.value = `${value.slice(0, 3)}-${value.slice(3)}`;
+    } else {
+        input.value = value;
+    }
+}
+
+function selectCustomerGroup(groupId, groupName) {
+    localStorage.setItem('selectedGroupId', groupId);
+    if (typeof isDeliveryFeeWaived !== 'undefined') {
+        isDeliveryFeeWaived = false;
+    }
+
+    const locationBtnContainer = document.getElementById('locationBtnContainer');
+
+    if (groupId === 2) {
+        locationBtnContainer.classList.remove('hidden');
+
+        if (savedTouristLocation && savedTouristZone) {
+            document.getElementById('selectedLocationName').value = savedTouristLocation;
+            document.getElementById('selectedZoneName').value = savedTouristZone;
+            
+            let displayLocationText = savedTouristLocation;
+            if (savedTouristZone && savedTouristZone !== savedTouristLocation) {
+                displayLocationText += ` - ${savedTouristZone}`;
+            }
+            document.getElementById('locationBtnText').innerText = displayLocationText;
+            applyCustomerGroupSelection(2, `นักท่องเที่ยว (${displayLocationText})`);
+        } else {
+            document.getElementById('locationBtnText').innerText = 'เลือกสถานที่';
+            applyCustomerGroupSelection(2, 'นักท่องเที่ยว');
+            openLocationModal();
+        }
+    } else {
+        locationBtnContainer.classList.add('hidden');
+        document.getElementById('selectedLocationName').value = '';
+        document.getElementById('selectedZoneName').value = '';
+        applyCustomerGroupSelection(groupId, groupName);
+    }
+}
+
+function openLocationModal() {
+    const grid = document.getElementById('locationGrid');
+    grid.innerHTML = '';
+
+    locationsData.forEach(loc => {
+        let icon = '🏨';
+        if (loc.name.includes('บาหลี')) icon = '🏝️';
+        else if (loc.name.includes('บ้านเขา')) icon = '🏡';
+        else if (loc.name.includes('ชิลล์')) icon = '☕';
+        else if (loc.name.includes('หน้าร้าน')) icon = '🏪';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'flex flex-col items-center justify-center p-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition cursor-pointer shadow-sm active:scale-95';
+        btn.innerHTML = `
+            <span class="text-xl mb-1">${icon}</span>
+            <span class="text-sm font-bold text-slate-800 text-center leading-tight truncate w-full">${loc.name}</span>
+        `;
+        btn.onclick = () => selectLocation(loc);
+        grid.appendChild(btn);
+    });
+
+    openModal('locationModal');
+}
+
+function selectLocation(loc) {
+    tempSelectedLocation = loc;
+    closeModal('locationModal');
+
+    if (loc.name.includes('หน้าร้าน')) {
+        const defaultZone = zonesData.find(z => String(z.location_id) === String(loc.id) && z.name.includes('หน้าร้าน')) 
+                         || zonesData.find(z => String(z.location_id) === String(loc.id))
+                         || { name: 'หน้าร้าน' };
+        selectZone(defaultZone);
+    } else {
+        openZoneModal(loc);
+    }
+}
+
+function openZoneModal(loc) {
+    document.getElementById('zoneModalSubTitle').innerText = `📍 สถานที่: ${loc.name}`;
+    const container = document.getElementById('zoneContainer');
+    container.innerHTML = '';
+
+    const filteredZones = zonesData.filter(z => String(z.location_id) === String(loc.id));
+
+    if (filteredZones.length === 0) {
+        container.innerHTML = '<span class="text-center text-gray-400 text-xs py-6 block">ไม่มีรายการ Zone สำหรับสถานที่นี้</span>';
+    } else {
+        const shortZones = filteredZones.filter(z => z.name.length <= 7);
+        const longZones = filteredZones.filter(z => z.name.length > 7);
+
+        if (shortZones.length > 0) {
+            const grid3 = document.createElement('div');
+            grid3.className = 'grid grid-cols-3 gap-1.5';
+            
+            shortZones.forEach((z, idx) => {
+                const icon = zoneIcons[idx % zoneIcons.length];
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'flex items-center justify-center gap-1.5 py-2 px-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition cursor-pointer shadow-sm active:scale-95 text-center';
+                btn.innerHTML = `
+                    <span class="text-sm shrink-0">${icon}</span>
+                    <span class="text-sm font-bold text-slate-800 truncate leading-tight">${z.name}</span>
+                `;
+                btn.onclick = () => selectZone(z);
+                grid3.appendChild(btn);
+            });
+            container.appendChild(grid3);
+        }
+
+        if (longZones.length > 0) {
+            const grid2 = document.createElement('div');
+            grid2.className = 'grid grid-cols-2 gap-1.5';
+            
+            longZones.forEach((z, idx) => {
+                const icon = zoneIcons[(shortZones.length + idx) % zoneIcons.length];
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'flex items-center justify-center gap-1.5 py-2 px-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition cursor-pointer shadow-sm active:scale-95 text-center';
+                btn.innerHTML = `
+                    <span class="text-sm shrink-0">${icon}</span>
+                    <span class="text-sm font-bold text-slate-800 truncate leading-tight">${z.name}</span>
+                `;
+                btn.onclick = () => selectZone(z);
+                grid2.appendChild(btn);
+            });
+            container.appendChild(grid2);
+        }
+    }
+
+    openModal('zoneModal');
+}
+
+function selectZone(zone) {
+    const locName = tempSelectedLocation ? tempSelectedLocation.name : '';
+    const zoneName = zone.name;
+
+    savedTouristLocation = locName;
+    savedTouristZone = zoneName;
+
+    localStorage.setItem('selectedLocationName', locName);
+    localStorage.setItem('selectedZoneName', zoneName);
+
+    document.getElementById('selectedLocationName').value = locName;
+    document.getElementById('selectedZoneName').value = zoneName;
+
+    let displayLocationText = locName;
+    if (zoneName && zoneName !== locName) {
+        displayLocationText += ` - ${zoneName}`;
+    }
+    document.getElementById('locationBtnText').innerText = displayLocationText;
+
+    applyCustomerGroupSelection(2, `นักท่องเที่ยว (${displayLocationText})`);
+    closeModal('zoneModal');
+}
+
+function applyCustomerGroupSelection(groupId, groupName) {
+    document.getElementById('customerGroupSelect').value = groupId;
+    document.getElementById('selectedGroupName').value = groupName;
+
+    localStorage.setItem('selectedGroupName', groupName);
+
+    document.querySelectorAll('.group-btn-v2').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.getElementById(`btn-group-${groupId}`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    // เรียกฟังก์ชันคำนวณราคาใหม่ (ถ้าอยู่ในหน้า CheckOrder)
+    if (typeof renderOrderSummary === 'function') {
+        renderOrderSummary();
+    }
+    if (window.parent && window.parent.onLocationGroupChanged) {
+        window.parent.onLocationGroupChanged(groupId, groupName);
+    }
+}
+
+function openModal(id) {
+    document.getElementById(id).classList.add('active');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+function handleOutsideClick(e, id) {
+    if (e.target.id === id) closeModal(id);
+}
