@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>เพิ่มเมนูอาหารใหม่ - AddMenuPopup.html</title>
+
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- ไฟล์คีย์สำหรับดึง URL/KEY และ supabaseClient -->
+    <script src="key.js"></script>
+
+    <style>
+        html, body {
+            background-color: transparent;
+            font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body id="backdrop" class="flex items-center justify-center min-h-screen p-3 bg-slate-900/60 backdrop-blur-sm relative">
+
+    <!-- Card Modal ป๊อปอัพหลัก (เส้นขอบสีแดง) -->
+    <div id="modalBox" class="w-full max-w-sm bg-white rounded-3xl p-5 border-4 border-red-500 relative z-10 shadow-2xl">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+                <span class="text-xl text-blue-600 font-extrabold flex items-center justify-center">➕</span>
+                <h2 class="text-base font-extrabold text-slate-800 tracking-tight">เพิ่มเมนูอาหารใหม่</h2>
+            </div>
+            <button type="button" onclick="closePopup()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold leading-none p-1 transition">&times;</button>
+        </div>
+
+        <!-- ฟอร์มกรอกข้อมูล -->
+        <form id="addMenuForm" onsubmit="handleSaveMenu(event)" class="space-y-4">
+            
+            <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">หมวดหมู่:</label>
+                    <input type="text" id="categoryNameInput" readonly value="อาหารจานเดียว" 
+                           class="w-full bg-slate-100 border border-slate-200 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-600 outline-none truncate">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                        ชื่อเมนูอาหาร <span class="text-rose-500 font-bold">*</span>
+                    </label>
+                    <input type="text" id="menuNameInput" required placeholder="เช่น กะเพราไก่, ต้มยำกุ้ง" 
+                           class="w-full border border-blue-400 focus:border-blue-600 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-slate-300 transition">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">ราคา (บาท):</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <span class="block text-[11px] font-bold text-slate-500 text-center mb-1">ชาวบ้าน</span>
+                        <input type="number" id="priceLocalInput" min="0" step="any" placeholder="0" 
+                               class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center text-xs font-extrabold text-slate-700 outline-none focus:bg-white focus:border-blue-500 transition">
+                    </div>
+                    <div>
+                        <span class="block text-[11px] font-bold text-slate-500 text-center mb-1">นักท่องเที่ยว</span>
+                        <input type="number" id="priceTouristInput" min="0" step="any" placeholder="0" 
+                               class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center text-xs font-extrabold text-slate-700 outline-none focus:bg-white focus:border-blue-500 transition">
+                    </div>
+                    <div>
+                        <span class="block text-[11px] font-bold text-slate-500 text-center mb-1">สบายดี</span>
+                        <input type="number" id="priceSabaideeInput" min="0" step="any" placeholder="0" 
+                               class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center text-xs font-extrabold text-slate-700 outline-none focus:bg-white focus:border-blue-500 transition">
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-2 grid grid-cols-2 gap-2">
+                <button type="button" onclick="closePopup()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 rounded-2xl text-xs transition">
+                    ยกเลิก
+                </button>
+                <button type="submit" id="btnSubmit" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-extrabold py-3 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition">
+                    <span>✓</span> บันทึกเมนู
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let db = null;
+        let currentGroupId = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initDatabase();
+            setupMessageListener();
+            setupBackdropClick();
+        });
+
+        function initDatabase() {
+            if (typeof supabaseClient !== 'undefined') {
+                db = supabaseClient;
+            } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
+                db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        }
+
+        function setupMessageListener() {
+            window.addEventListener('message', (event) => {
+                const data = event.data;
+                if (!data) return;
+
+                if (data.action === 'initAddMenu') {
+                    if (data.groupName) document.getElementById('categoryNameInput').value = data.groupName;
+                    if (data.groupId) currentGroupId = data.groupId;
+                    
+                    document.getElementById('menuNameInput').value = '';
+                    document.getElementById('priceLocalInput').value = '';
+                    document.getElementById('priceTouristInput').value = '';
+                    document.getElementById('priceSabaideeInput').value = '';
+                }
+            });
+        }
+
+        /* ตรวจจับการแตะ/คลิก พื้นที่นอกกรอบป๊อปอัป */
+        function setupBackdropClick() {
+            document.getElementById('backdrop').addEventListener('click', (e) => {
+                const modalBox = document.getElementById('modalBox');
+                // ถ้าจุดที่คลิกไม่อยู่ในกล่อง modalBox ให้สั่งปิดลงทันที
+                if (modalBox && !modalBox.contains(e.target)) {
+                    closePopup();
+                }
+            });
+        }
+
+        /* ฟังก์ชันสั่งปิดป๊อปอัปตรงๆ (วิธีที่ 2) */
+        function closePopup() {
+            if (window.parent && window.parent !== window) {
+                
+                // 1. ส่งสัญญาณ postMessage เผื่อเพจหลักบางเพจรอดักฟังอยู่
+                window.parent.postMessage({ action: 'closeAddMenuModal' }, '*');
+
+                // 2. ถ้ามาจากระบบ ManageMenu ให้สั่งสลับกลับไปหน้าจัดการราคา
+                if (typeof window.parent.closeAddMenuIframeAndReopenManage === 'function') {
+                    window.parent.closeAddMenuIframeAndReopenManage();
+                    return;
+                }
+
+                // 3. ปิด/ซ่อน Wrapper iframe บนหน้าแม่ตรงๆ
+                const parentWrapper = window.parent.document.getElementById('popupModalWrapper') || 
+                                      window.parent.document.getElementById('addMenuModalWrapper');
+                if (parentWrapper) {
+                    parentWrapper.classList.add('hidden');
+                    const iframe = parentWrapper.querySelector('iframe');
+                    if (iframe) iframe.src = 'about:blank';
+                    return;
+                }
+            }
+
+            // ถ้ารันหน้าเดี่ยวๆ
+            window.close();
+        }
+
+        async function handleSaveMenu(e) {
+            e.preventDefault();
+
+            const menuName = document.getElementById('menuNameInput').value.trim();
+            const priceLocal = parseFloat(document.getElementById('priceLocalInput').value) || 0;
+            const priceTourist = parseFloat(document.getElementById('priceTouristInput').value) || 0;
+            const priceSabaidee = parseFloat(document.getElementById('priceSabaideeInput').value) || 0;
+
+            if (!menuName) return;
+
+            const btnSubmit = document.getElementById('btnSubmit');
+            btnSubmit.disabled = true;
+
+            try {
+                let insertedData = null;
+
+                if (db) {
+                    const payload = {
+                        name: menuName,
+                        price_1: priceTourist,
+                        price_2: priceLocal,
+                        price_3: priceSabaidee
+                    };
+
+                    if (currentGroupId) {
+                        payload.group_id = currentGroupId;
+                    }
+
+                    const { data, error } = await db.from('foods').insert([payload]).select();
+                    if (error) throw error;
+                    insertedData = data ? data[0] : null;
+                }
+
+                // ส่งสัญญาณบอกหน้าหลักว่าบันทึกสำเร็จ
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        action: 'menuSaved',
+                        data: {
+                            name: menuName,
+                            group_id: currentGroupId,
+                            price_1: priceTourist,
+                            price_2: priceLocal,
+                            price_3: priceSabaidee,
+                            raw: insertedData
+                        }
+                    }, '*');
+                }
+
+                // สั่งปิดหน้าต่างทันทีหลังบันทึกเรียบร้อย
+                closePopup();
+
+            } catch (err) {
+                console.error('Error saving menu:', err);
+            } finally {
+                btnSubmit.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

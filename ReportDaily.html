@@ -256,10 +256,22 @@
                 </tr>`;
             }).join('');
 
-            let groupLabel = order.customer_group || order.group_name || order.customer_type || 'ทั่วไป';
-            if (groupLabel.includes(' ')) {
+            // --- ส่วนที่ปรับแก้ไขการแสดงผลกลุ่มลูกค้า / สถานที่ ---
+            let groupLabel = order.customer_group || order.group_name || order.customer_type || '';
+
+            if (groupLabel.includes('นักท่องเที่ยว')) {
+                const loc = order.location_name || '';
+                const zone = order.zone_name || '';
+                const fullLocation = [loc, zone].filter(Boolean).join(' ');
+                groupLabel = fullLocation || 'นักท่องเที่ยว';
+            } else if (groupLabel.includes(' ')) {
                 groupLabel = groupLabel.split(' ')[0];
             }
+
+            if (!groupLabel) {
+                groupLabel = 'ทั่วไป';
+            }
+            // --------------------------------------------------
             
             container.innerHTML += `
                 <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2">

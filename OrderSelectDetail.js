@@ -1,187 +1,210 @@
-// ==========================================
-// ไฟล์: OrderSelectDetail.js ( Pop-up สั่งรายละเอียดอาหาร )
-// ==========================================
+window.currentSelectedFood = null;
+window.editingItemId = null;
 
-window.OrderSelectDetail = (function() {
-    let currentFood = null;
-    let onSaveCallback = null;
+window.modalMainQty = 1;
+window.modalEgg1Qty = 0;
+window.modalEgg2Qty = 0;
 
-    let qty = 1;
-    let egg1Qty = 0; // ไข่ดาว
-    let egg2Qty = 0; // ไข่เจียว
-    let noteText = '';
+function openOrderDetailModal(food) {
+    window.currentSelectedFood = food;
+    window.editingItemId = null; 
 
-    // สร้าง Element ของ Modal ใน DOM ถ้ายังไม่มี
-    function initModalDOM() {
-        if (document.getElementById('orderDetailModalOverlay')) return;
+    resetModalFields();
+    renderSelectedFoodItems();
 
-        const modalHTML = `
-        <div id="orderDetailModalOverlay" class="custom-modal-overlay">
-            <div class="custom-modal-box" style="max-width: 24rem;">
-                <div class="flex justify-between items-center mb-2">
-                    <h2 id="detailFoodName" class="font-extrabold text-lg text-slate-800">ชื่ออาหาร</h2>
-                    <button type="button" onclick="window.OrderSelectDetail.close()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-                </div>
-                <div id="detailFoodPrice" class="text-emerald-600 font-extrabold text-sm mb-4">ราคา: ฿0</div>
+    const catName = window.currentCategory ? window.currentCategory.name : '';
+    const isSingleDish = catName.includes('อาหารจานเดียว') || catName.includes('ข้าวกล่อง') || catName.includes('จานเดียว');
 
-                <!-- กล่องแสดงตัวอย่างรายการที่เลือก (แก้ไข undefinedx) -->
-                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4">
-                    <div class="text-xs text-slate-500 font-bold mb-1">🛒 รายการที่เลือกไว้แล้ว:</div>
-                    <div class="bg-white border border-slate-300 rounded-lg p-2.5 flex justify-between items-center">
-                        <span id="detailPreviewText" class="text-emerald-600 font-bold text-sm">1x รายการ</span>
-                        <div class="flex items-center gap-2">
-                            <span class="text-slate-400 text-xs">✏️</span>
-                            <span onclick="window.OrderSelectDetail.resetInputs()" class="text-slate-400 hover:text-slate-600 cursor-pointer font-bold">&times;</span>
-                        </div>
-                    </div>
-                </div>
+    const egg1Row = document.getElementById('egg1Row');
+    const egg2Row = document.getElementById('egg2Row');
 
-                <!-- ปุ่มเพิ่ม/ลด จำนวนจานหลัก -->
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span class="text-xs font-bold text-slate-700">จำนวน</span>
-                    <div class="flex items-center gap-3">
-                        <button type="button" onclick="window.OrderSelectDetail.changeQty('main', -1)" class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center active:scale-95">-</button>
-                        <span id="displayMainQty" class="font-bold text-sm min-w-[20px] text-center">1</span>
-                        <button type="button" onclick="window.OrderSelectDetail.changeQty('main', 1)" class="w-8 h-8 rounded-full bg-emerald-500 text-white font-bold flex items-center justify-center active:scale-95">+</button>
-                    </div>
-                </div>
+    if (egg1Row && egg2Row) {
+        if (isSingleDish) {
+            egg1Row.style.display = 'flex';
+            egg2Row.style.display = 'flex';
+        } else {
+            egg1Row.style.display = 'none';
+            egg2Row.style.display = 'none';
+        }
+    }
 
-                <!-- ปุ่มเพิ่ม/ลด ไข่ดาว -->
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span class="text-xs font-bold text-slate-700">🔍 ไข่ดาว</span>
-                    <div class="flex items-center gap-3">
-                        <button type="button" onclick="window.OrderSelectDetail.changeQty('egg1', -1)" class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center active:scale-95">-</button>
-                        <span id="displayEgg1Qty" class="font-bold text-sm min-w-[20px] text-center">0</span>
-                        <button type="button" onclick="window.OrderSelectDetail.changeQty('egg1', 1)" class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center active:scale-95">+</button>
-                    </div>
-                </div>
+    document.getElementById('detailFoodName').querySelector('span').textContent = food.name;
+    document.getElementById('orderDetailModalOverlay').classList.add('active');
+}
 
-                <!-- ปุ่มเพิ่ม/ลด ไข่เจียว -->
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span class="text-xs font-bold text-slate-700">🔍 ไข่เจียว</span>
-                    <div class="flex items-center gap-3">
-                        <button type="button" onclick="window.OrderSelectDetail.changeQty('egg2', -1)" class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center active:scale-95">-</button>
-                        <span id="displayEgg2Qty" class="font-bold text-sm min-w-[20px] text-center">0</span>
-                        <button type="button" onclick="window.OrderSelectDetail.changeQty('egg2', 1)" class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center active:scale-95">+</button>
-                    </div>
-                </div>
+function closeOrderDetailModal() {
+    document.getElementById('orderDetailModalOverlay').classList.remove('active');
+}
 
-                <!-- ช่องพิมพ์ NOTE -->
-                <div class="mt-3">
-                    <label class="block text-xs font-bold text-slate-600 mb-1">รายละเอียดเพิ่มเติม (NOTE)</label>
-                    <input type="text" id="detailNoteInput" oninput="window.OrderSelectDetail.onNoteChange(this.value)" placeholder="(เช่น เผ็ดน้อย, ไม่ใส่ผัก)" class="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-emerald-500">
-                </div>
+function resetModalFields() {
+    window.modalMainQty = 1;
+    window.modalEgg1Qty = 0;
+    window.modalEgg2Qty = 0;
 
-                <!-- ปุ่มบันทึกรายการ (กล่องสีเหลืองเดิม) -->
-                <button type="button" onclick="window.OrderSelectDetail.save()" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold py-3 rounded-full text-sm mt-4 shadow flex items-center justify-center gap-2">
-                    ✓ บันทึกรายการ
-                </button>
+    document.getElementById('displayMainQty').textContent = '1';
+    document.getElementById('displayEgg1Qty').textContent = '0';
+    document.getElementById('displayEgg2Qty').textContent = '0';
+
+    document.getElementById('customPriceInput').value = '';
+    document.getElementById('detailNoteInput').value = '';
+
+    const btnSave = document.getElementById('btnSaveOrderDetail');
+    if (btnSave) {
+        btnSave.innerHTML = '✓ บันทึกรายการ';
+        btnSave.className = 'w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 rounded-xl text-sm shadow transition flex items-center justify-center gap-1';
+    }
+}
+
+function changeDetailQty(type, delta) {
+    if (type === 'main') {
+        window.modalMainQty = Math.max(1, window.modalMainQty + delta);
+        document.getElementById('displayMainQty').textContent = window.modalMainQty;
+    } else if (type === 'egg1') {
+        window.modalEgg1Qty = Math.max(0, window.modalEgg1Qty + delta);
+        document.getElementById('displayEgg1Qty').textContent = window.modalEgg1Qty;
+    } else if (type === 'egg2') {
+        window.modalEgg2Qty = Math.max(0, window.modalEgg2Qty + delta);
+        document.getElementById('displayEgg2Qty').textContent = window.modalEgg2Qty;
+    }
+}
+
+function renderSelectedFoodItems() {
+    if (!window.currentSelectedFood) return;
+
+    const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
+    const items = currentCart.filter(item => String(item.food_id) === String(window.currentSelectedFood.id));
+
+    const section = document.getElementById('selectedItemsSection');
+    const listContainer = document.getElementById('selectedItemsList');
+
+    if (!section || !listContainer) return;
+
+    if (items.length === 0) {
+        section.classList.add('hidden');
+        listContainer.innerHTML = '';
+        return;
+    }
+
+    section.classList.remove('hidden');
+    listContainer.innerHTML = '';
+
+    items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'flex justify-between items-center bg-white p-2 rounded-xl border border-sky-100 shadow-sm text-xs';
+
+        let detailText = `${item.qty}x ${item.name}`;
+        let extras = [];
+        if (item.egg1_qty > 0) extras.push(`ไข่ดาว ${item.egg1_qty}`);
+        if (item.egg2_qty > 0) extras.push(`ไข่เจียว ${item.egg2_qty}`);
+        if (item.custom_price) extras.push(`@${item.custom_price}฿`);
+        if (item.note) extras.push(`(${item.note})`);
+
+        if (extras.length > 0) {
+            detailText += ` <span class="text-slate-400 font-normal">[${extras.join(', ')}]</span>`;
+        }
+
+        div.innerHTML = `
+            <div class="font-bold text-slate-700 truncate pr-2">${detailText}</div>
+            <div class="flex items-center gap-1">
+                <button type="button" onclick="editCartItem('${item.id}')" class="text-amber-500 hover:text-amber-600 p-1"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" onclick="removeCartItem('${item.id}')" class="text-rose-500 hover:text-rose-600 p-1"><i class="fa-solid fa-xmark"></i></button>
             </div>
-        </div>
         `;
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-    }
+        listContainer.appendChild(div);
+    });
+}
 
-    // ฟังก์ชันจัดฟอร์แมตข้อความ (แก้ไขสีแดง undefinedx)
-    function formatDisplayText(q, foodName, egg1, egg2, note) {
-        const validQty = parseInt(q) || 1;
-        let options = [];
+function saveOrderDetailToList() {
+    if (!window.currentSelectedFood) return;
 
-        if (egg1 > 0) options.push(`ไข่ดาว ${egg1}`);
-        if (egg2 > 0) options.push(`ไข่เจียว ${egg2}`);
-        if (note && note.trim() !== '') options.push(note.trim());
+    let currentCart = JSON.parse(localStorage.getItem('cart')) || [];
+    const customPriceVal = document.getElementById('customPriceInput').value;
+    const noteVal = document.getElementById('detailNoteInput').value.trim();
 
-        const optionsText = options.length > 0 ? ` (${options.join(', ')})` : '';
-        return `${validQty}x ${foodName}${optionsText}`;
-    }
+    const price = customPriceVal !== '' ? Number(customPriceVal) : Number(window.currentSelectedFood.price || 0);
 
-    function updatePreview() {
-        const previewEl = document.getElementById('detailPreviewText');
-        if (previewEl && currentFood) {
-            previewEl.textContent = formatDisplayText(qty, currentFood.name, egg1Qty, egg2Qty, noteText);
-        }
-    }
-
-    return {
-        open: function(options) {
-            initModalDOM();
-            currentFood = options.food;
-            onSaveCallback = options.onSave;
-
-            // ค่าเริ่มต้นเปิดขึ้นมาทุกครั้งจะเป็น 1 จานเสมอ
-            qty = 1;
-            egg1Qty = 0;
-            egg2Qty = 0;
-            noteText = '';
-
-            document.getElementById('detailFoodName').textContent = currentFood.name;
-            document.getElementById('detailFoodPrice').textContent = `ราคา: ฿${currentFood.price_1 || currentFood.price || 0}`;
-            document.getElementById('detailNoteInput').value = '';
-
-            document.getElementById('displayMainQty').textContent = qty;
-            document.getElementById('displayEgg1Qty').textContent = egg1Qty;
-            document.getElementById('displayEgg2Qty').textContent = egg2Qty;
-
-            updatePreview();
-            document.getElementById('orderDetailModalOverlay').classList.add('active');
-        },
-
-        close: function() {
-            const modal = document.getElementById('orderDetailModalOverlay');
-            if (modal) modal.classList.remove('active');
-        },
-
-        resetInputs: function() {
-            qty = 1;
-            egg1Qty = 0;
-            egg2Qty = 0;
-            noteText = '';
-            document.getElementById('displayMainQty').textContent = qty;
-            document.getElementById('displayEgg1Qty').textContent = egg1Qty;
-            document.getElementById('displayEgg2Qty').textContent = egg2Qty;
-            document.getElementById('detailNoteInput').value = '';
-            updatePreview();
-        },
-
-        changeQty: function(type, delta) {
-            if (type === 'main') {
-                qty = Math.max(1, qty + delta);
-                document.getElementById('displayMainQty').textContent = qty;
-            } else if (type === 'egg1') {
-                egg1Qty = Math.max(0, egg1Qty + delta);
-                document.getElementById('displayEgg1Qty').textContent = egg1Qty;
-            } else if (type === 'egg2') {
-                egg2Qty = Math.max(0, egg2Qty + delta);
-                document.getElementById('displayEgg2Qty').textContent = egg2Qty;
+    if (window.editingItemId) {
+        currentCart = currentCart.map(item => {
+            if (item.id === window.editingItemId) {
+                return {
+                    ...item,
+                    qty: window.modalMainQty,
+                    egg1_qty: window.modalEgg1Qty,
+                    egg2_qty: window.modalEgg2Qty,
+                    custom_price: customPriceVal !== '' ? Number(customPriceVal) : null,
+                    price: price,
+                    note: noteVal
+                };
             }
-            updatePreview();
-        },
+            return item;
+        });
+    } else {
+        const newItem = {
+            id: 'item_' + Date.now(),
+            food_id: window.currentSelectedFood.id,
+            name: window.currentSelectedFood.name,
+            qty: window.modalMainQty,
+            egg1_qty: window.modalEgg1Qty,
+            egg2_qty: window.modalEgg2Qty,
+            custom_price: customPriceVal !== '' ? Number(customPriceVal) : null,
+            price: price,
+            note: noteVal
+        };
+        currentCart.push(newItem);
+    }
 
-        onNoteChange: function(val) {
-            noteText = val;
-            updatePreview();
-        },
+    localStorage.setItem('cart', JSON.stringify(currentCart));
+    window.cart = currentCart;
 
-        save: function() {
-            if (onSaveCallback && currentFood) {
-                const displayText = formatDisplayText(qty, currentFood.name, egg1Qty, egg2Qty, noteText);
-                const basePrice = parseFloat(currentFood.price_1 || currentFood.price || 0);
-                const extraPrice = (egg1Qty * 10) + (egg2Qty * 10); // ราคาไข่เพิ่ม
-                const totalPrice = (basePrice + extraPrice) * qty;
+    updateCartUI();
+    renderQuickNav();
 
-                onSaveCallback({
-                    qty: qty,
-                    egg1: egg1Qty,
-                    egg2: egg2Qty,
-                    note: noteText,
-                    displayText: displayText,
-                    totalPrice: totalPrice
-                });
-            }
-            this.close();
-        }
-    };
-})();
+    if (window.currentCategory) {
+        const icon = window.categoryIcons[window.categories.findIndex(c => c.id === window.currentCategory.id) % window.categoryIcons.length] || '🍱';
+        openCategoryFoodModal(window.currentCategory, icon);
+    }
 
-// กำหนด Alias เพื่อความเข้ากันได้ของชื่อเรียก
-window.OrderSelectDetailPopup = window.OrderSelectDetail;
+    closeOrderDetailModal();
+}
+
+function editCartItem(itemId) {
+    const currentCart = JSON.parse(localStorage.getItem('cart')) || [];
+    const item = currentCart.find(i => i.id === itemId);
+    if (!item) return;
+
+    window.editingItemId = itemId;
+
+    window.modalMainQty = item.qty || 1;
+    window.modalEgg1Qty = item.egg1_qty || 0;
+    window.modalEgg2Qty = item.egg2_qty || 0;
+
+    document.getElementById('displayMainQty').textContent = window.modalMainQty;
+    document.getElementById('displayEgg1Qty').textContent = window.modalEgg1Qty;
+    document.getElementById('displayEgg2Qty').textContent = window.modalEgg2Qty;
+
+    document.getElementById('customPriceInput').value = item.custom_price !== null && item.custom_price !== undefined ? item.custom_price : '';
+    document.getElementById('detailNoteInput').value = item.note || '';
+
+    const btnSave = document.getElementById('btnSaveOrderDetail');
+    if (btnSave) {
+        btnSave.innerHTML = '✓ บันทึกการแก้ไข';
+        btnSave.className = 'w-full bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold py-3 rounded-xl text-sm shadow transition flex items-center justify-center gap-1';
+    }
+}
+
+function removeCartItem(itemId) {
+    let currentCart = JSON.parse(localStorage.getItem('cart')) || [];
+    currentCart = currentCart.filter(i => i.id !== itemId);
+    
+    localStorage.setItem('cart', JSON.stringify(currentCart));
+    window.cart = currentCart;
+
+    updateCartUI();
+    renderQuickNav();
+    renderSelectedFoodItems();
+
+    if (window.currentCategory) {
+        const icon = window.categoryIcons[window.categories.findIndex(c => c.id === window.currentCategory.id) % window.categoryIcons.length] || '🍱';
+        openCategoryFoodModal(window.currentCategory, icon);
+    }
+}

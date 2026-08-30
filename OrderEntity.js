@@ -117,7 +117,7 @@
         }
         .custom-modal-overlay.active { display: flex; }
         .custom-modal-box { 
-            background: #ffffff; border-radius: 1.5rem; max-width: 22rem; 
+            background: #ffffff; border-radius: 1.5rem; max-width: 24rem; 
             width: 100%; padding: 1.25rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); 
             max-height: 90vh; overflow-y: auto; border-top: 4px solid #22c55e; 
             touch-action: pan-y; 
@@ -149,15 +149,26 @@
         </div>
     </div>
 
-    <!-- Modal 1: ป๊อปอัพตารางรายการอาหารในหมวดหมู่ -->
+    <!-- Modal 1: ป๊อปอัพตารางรายการอาหารในหมวดหมู่ (แก้ไขส่วน Header ตามรูปที่ 2) -->
     <div id="categoryFoodModalOverlay" class="custom-modal-overlay">
-        <div class="custom-modal-box" style="max-width: 24rem;" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center gap-2">
-                    <span id="catModalIcon" class="text-xl">🍱</span>
-                    <h2 id="catModalTitle" class="font-extrabold text-base text-slate-800">หมวดหมู่</h2>
+        <div class="custom-modal-box" onclick="event.stopPropagation()">
+            <!-- Header ปรับตามรูปที่ 2 -->
+            <div class="flex justify-between items-center mb-4 gap-2">
+                <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span id="catModalIcon" class="text-lg shrink-0">🍱</span>
+                    <h2 id="catModalTitle" class="font-extrabold text-sm text-slate-800 truncate">หมวดหมู่</h2>
                 </div>
-                <button type="button" onclick="closeCategoryFoodModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+                
+                <!-- กลุ่มปุ่มขวา: ยกเลิก + เมนู + ปิด -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button type="button" onclick="cancelCategoryItems()" class="bg-rose-100 hover:bg-rose-200 text-rose-600 text-xs font-bold px-2.5 py-1 rounded-xl transition">
+                        ยกเลิก
+                    </button>
+                    <button type="button" onclick="openAddFoodModal()" class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-2.5 py-1 rounded-xl shadow-sm transition flex items-center gap-1">
+                        + เมนู
+                    </button>
+                    <button type="button" onclick="closeCategoryFoodModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold ml-1">&times;</button>
+                </div>
             </div>
 
             <!-- Grid ปุ่มรายการอาหาร -->
@@ -169,76 +180,56 @@
         </div>
     </div>
 
-    <!-- Modal 2: ป๊อปอัพเลือกรายละเอียดอาหาร -->
-    <div id="orderDetailModalOverlay" class="custom-modal-overlay">
-        <div class="custom-modal-box" style="max-width: 24rem;" onclick="event.stopPropagation()">
+    <!-- Modal เพิ่มเมนูอาหารใหม่ (หน้าตาฟอร์มกรอกข้อมูลตามที่ระบุ) -->
+    <div id="addFoodModalOverlay" class="custom-modal-overlay" style="z-index: 10000;">
+        <div class="custom-modal-box" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-3">
-                <h2 id="detailFoodName" class="font-extrabold text-lg text-slate-800 flex items-center gap-2">
-                    📌 <span>ชื่ออาหาร</span>
-                </h2>
-                <button type="button" onclick="closeOrderDetailModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+                <h3 class="font-extrabold text-sm text-slate-800">➕ เพิ่มเมนูอาหารใหม่</h3>
+                <button type="button" onclick="closeAddFoodModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
-
-            <!-- ส่วนแสดงรายการที่เลือกไว้แล้ว -->
-            <div id="selectedItemsSection" class="bg-sky-50/60 border border-sky-200 rounded-2xl p-2.5 mb-3 hidden">
-                <div class="text-xs font-bold text-sky-800 mb-2 flex items-center gap-1">
-                    🛒 รายการที่เลือกไว้แล้ว:
+            
+            <form id="addFoodForm" onsubmit="handleSaveNewFood(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">หมวดหมู่อาหาร</label>
+                    <input type="text" id="addFoodCatName" readonly class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-600">
                 </div>
-                <div id="selectedItemsList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></div>
-            </div>
 
-            <div class="border border-slate-200 rounded-2xl p-3 space-y-3 mb-4">
-                <!-- จำนวน -->
-                <div class="flex justify-between items-center py-1">
-                    <span class="text-xs font-bold text-slate-700">จำนวน</span>
-                    <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden">
-                        <button type="button" onclick="changeDetailQty('main', -1)" class="w-8 h-8 bg-slate-50 text-slate-600 font-bold flex items-center justify-center active:bg-slate-200">-</button>
-                        <span id="displayMainQty" class="w-10 text-center font-bold text-xs">1</span>
-                        <button type="button" onclick="changeDetailQty('main', 1)" class="w-8 h-8 bg-slate-50 text-slate-600 font-bold flex items-center justify-center active:bg-slate-200">+</button>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">ชื่อรายการอาหาร <span class="text-rose-500">*</span></label>
+                    <input type="text" id="addFoodName" required placeholder="เช่น ข้าวกระเพราหมู" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">นักท่องเที่ยว</label>
+                        <input type="number" id="addPrice1" required placeholder="0" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">ชาวบ้าน</label>
+                        <input type="number" id="addPrice2" required placeholder="0" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">สบายดี</label>
+                        <input type="number" id="addPrice3" required placeholder="0" class="w-full border border-slate-300 rounded-xl p-2 text-xs focus:ring-2 focus:ring-emerald-500 outline-none">
                     </div>
                 </div>
 
-                <!-- แถบไข่ดาว -->
-                <div id="egg1Row" class="flex justify-between items-center py-1 border-t border-slate-100">
-                    <span class="text-xs font-bold text-slate-700 flex items-center gap-1">🍳 ไข่ดาว</span>
-                    <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden">
-                        <button type="button" onclick="changeDetailQty('egg1', -1)" class="w-8 h-8 bg-slate-50 text-slate-600 font-bold flex items-center justify-center active:bg-slate-200">-</button>
-                        <span id="displayEgg1Qty" class="w-10 text-center font-bold text-xs">0</span>
-                        <button type="button" onclick="changeDetailQty('egg1', 1)" class="w-8 h-8 bg-slate-50 text-slate-600 font-bold flex items-center justify-center active:bg-slate-200">+</button>
-                    </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeAddFoodModal()" class="flex-1 py-2 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl border border-slate-200">ยกเลิก</button>
+                    <button type="submit" id="btnSubmitAddFood" class="flex-1 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow hover:bg-emerald-700 transition">บันทึกเมนู</button>
                 </div>
-
-                <!-- แถบไข่เจียว -->
-                <div id="egg2Row" class="flex justify-between items-center py-1 border-t border-slate-100">
-                    <span class="text-xs font-bold text-slate-700 flex items-center gap-1">🍳 ไข่เจียว</span>
-                    <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden">
-                        <button type="button" onclick="changeDetailQty('egg2', -1)" class="w-8 h-8 bg-slate-50 text-slate-600 font-bold flex items-center justify-center active:bg-slate-200">-</button>
-                        <span id="displayEgg2Qty" class="w-10 text-center font-bold text-xs">0</span>
-                        <button type="button" onclick="changeDetailQty('egg2', 1)" class="w-8 h-8 bg-slate-50 text-slate-600 font-bold flex items-center justify-center active:bg-slate-200">+</button>
-                    </div>
-                </div>
-
-                <!-- ราคาพิเศษ -->
-                <div class="flex justify-between items-center py-1 border-t border-slate-100">
-                    <span class="text-xs font-bold text-amber-600">ราคาพิเศษ</span>
-                    <input type="number" id="customPriceInput" placeholder="ระบุราคา" class="w-28 p-1.5 border border-amber-300 rounded-lg text-xs text-right font-bold text-amber-700 focus:outline-none focus:border-amber-500">
-                </div>
-
-                <!-- หมายเหตุ -->
-                <div class="flex justify-between items-center py-1 border-t border-slate-100">
-                    <span class="text-xs font-bold text-slate-700">หมายเหตุ</span>
-                    <input type="text" id="detailNoteInput" placeholder="(เช่น เผ็ดน้อย, ไม่ใส่ผัก)" class="w-44 p-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-emerald-500">
-                </div>
-            </div>
-
-            <!-- ปุ่มบันทึก -->
-            <button type="button" id="btnSaveOrderDetail" onclick="saveOrderDetailToList()" class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 rounded-xl text-sm shadow transition flex items-center justify-center gap-1">
-                ✓ บันทึกรายการ
-            </button>
+            </form>
         </div>
     </div>
 
-    <!-- Modal ยืนยันการล้างตะกร้า -->
+    <!-- Modal 2: ป๊อปอัพเลือกรายละเอียดอาหาร -->
+    <div id="orderDetailModalOverlay" class="custom-modal-overlay">
+        <div class="w-full max-w-[24rem] p-0 overflow-hidden bg-transparent border-0 shadow-none">
+            <iframe id="orderPopupIframe" src="OrderPopup.html" class="w-full h-[320px] border-none bg-transparent"></iframe>
+        </div>
+    </div>
+
+    <!-- Modal ยืนยันการล้างตะกร้าทั้งหมด -->
     <div id="confirmClearModalOverlay" class="custom-modal-overlay">
         <div class="custom-modal-box text-center" onclick="event.stopPropagation()">
             <div class="w-12 h-12 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-bold">🗑️</div>
@@ -264,10 +255,6 @@
         let currentSelectedFood = null;
         let editingItemId = null;
 
-        let modalMainQty = 1;
-        let modalEgg1Qty = 0;
-        let modalEgg2Qty = 0;
-
         const categoryIcons = ['🍱', '🍲', '🍳', '🍚', '🥩', '⭐', '🥗', '🛍️', '🍽️'];
 
         document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
@@ -289,6 +276,7 @@
 
         function setupOutsideClickClose() {
             document.getElementById('categoryFoodModalOverlay').addEventListener('click', closeCategoryFoodModal);
+            document.getElementById('addFoodModalOverlay').addEventListener('click', closeAddFoodModal);
             document.getElementById('orderDetailModalOverlay').addEventListener('click', closeOrderDetailModal);
             document.getElementById('confirmClearModalOverlay').addEventListener('click', closeConfirmClearModal);
         }
@@ -361,7 +349,13 @@
             document.getElementById('catModalIcon').textContent = icon;
             document.getElementById('catModalTitle').textContent = cat.name;
 
-            const catFoods = foods.filter(f => Number(f.group_id) === Number(cat.id));
+            renderFoodGrid();
+            document.getElementById('categoryFoodModalOverlay').classList.add('active');
+        }
+
+        function renderFoodGrid() {
+            if (!currentCategory) return;
+            const catFoods = foods.filter(f => Number(f.group_id) === Number(currentCategory.id));
             const gridContainer = document.getElementById('foodButtonsGrid');
             gridContainer.innerHTML = '';
 
@@ -389,169 +383,142 @@
                     gridContainer.appendChild(btn);
                 });
             }
-
-            document.getElementById('categoryFoodModalOverlay').classList.add('active');
         }
 
         function closeCategoryFoodModal() {
             document.getElementById('categoryFoodModalOverlay').classList.remove('active');
         }
 
-        function openOrderDetailModal(food) {
-            currentSelectedFood = food;
-            editingItemId = null; 
+        // ยกเลิกรายการเฉพาะในกลุ่มนี้โดยอัตโนมัติ (ไม่ใช้ Pop-up)
+        function cancelCategoryItems() {
+            if (!currentCategory) return;
 
-            resetModalFields();
-            renderSelectedFoodItems();
+            // ดึง ID ของอาหารที่อยู่ในหมวดหมู่นี้ทั้งหมด
+            const catFoodIds = foods
+                .filter(f => Number(f.group_id) === Number(currentCategory.id))
+                .map(f => String(f.id));
+
+            // กรองตะกร้าเอาเฉพาะรายการที่ไม่เกี่ยวกับหมวดหมู่นี้ไว้
+            cart = cart.filter(item => !catFoodIds.includes(String(item.food_id)));
+            localStorage.setItem('cart', JSON.stringify(cart));
+
+            // อัปเดต UI หน้าจอทันที
+            updateCartUI();
+            renderFoodGrid();
+        }
+
+        // เปิด Modal เพิ่มเมนูอาหาร
+        function openAddFoodModal() {
+            if (!currentCategory) return;
+            document.getElementById('addFoodCatName').value = currentCategory.name;
+            document.getElementById('addFoodName').value = '';
+            document.getElementById('addPrice1').value = '';
+            document.getElementById('addPrice2').value = '';
+            document.getElementById('addPrice3').value = '';
+            document.getElementById('addFoodModalOverlay').classList.add('active');
+        }
+
+        function closeAddFoodModal() {
+            document.getElementById('addFoodModalOverlay').classList.remove('active');
+        }
+
+        // บันทึกเมนูอาหารใหม่ลง Supabase
+        async function handleSaveNewFood(e) {
+            e.preventDefault();
+            if (!db || !currentCategory) return;
+
+            const name = document.getElementById('addFoodName').value.trim();
+            const price1 = Number(document.getElementById('addPrice1').value || 0);
+            const price2 = Number(document.getElementById('addPrice2').value || 0);
+            const price3 = Number(document.getElementById('addPrice3').value || 0);
+
+            const submitBtn = document.getElementById('btnSubmitAddFood');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'กำลังบันทึก...';
+
+            try {
+                const { data, error } = await db.from('foods').insert([
+                    {
+                        group_id: currentCategory.id,
+                        name: name,
+                        price_1: price1,
+                        price_2: price2,
+                        price_3: price3
+                    }
+                ]).select();
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    foods.push(data[0]);
+                } else {
+                    await loadData();
+                }
+
+                closeAddFoodModal();
+                renderFoodGrid();
+                renderQuickNav();
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการบันทึกเมนู: ' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'บันทึกเมนู';
+            }
+        }
+
+        // เปิด Modal รายละเอียดผ่าน iframe
+        function openOrderDetailModal(food, editItem = null) {
+            currentSelectedFood = food;
+            editingItemId = editItem ? editItem.item_id : null;
 
             const catName = currentCategory ? currentCategory.name : '';
             const isSingleDish = catName.includes('อาหารจานเดียว') || catName.includes('ข้าวกล่อง') || catName.includes('จานเดียว');
 
-            const egg1Row = document.getElementById('egg1Row');
-            const egg2Row = document.getElementById('egg2Row');
-
-            if (isSingleDish) {
-                egg1Row.style.display = 'flex';
-                egg2Row.style.display = 'flex';
-            } else {
-                egg1Row.style.display = 'none';
-                egg2Row.style.display = 'none';
-            }
-
             document.getElementById('orderDetailModalOverlay').classList.add('active');
-        }
 
-        function resetModalFields() {
-            modalMainQty = 1;
-            modalEgg1Qty = 0;
-            modalEgg2Qty = 0;
-
-            document.getElementById('detailFoodName').querySelector('span').textContent = currentSelectedFood.name;
-            document.getElementById('displayMainQty').textContent = modalMainQty;
-            document.getElementById('displayEgg1Qty').textContent = modalEgg1Qty;
-            document.getElementById('displayEgg2Qty').textContent = modalEgg2Qty;
-            document.getElementById('customPriceInput').value = '';
-            document.getElementById('detailNoteInput').value = '';
-            document.getElementById('btnSaveOrderDetail').textContent = '✓ บันทึกรายการ';
-        }
-
-        function renderSelectedFoodItems() {
-            const section = document.getElementById('selectedItemsSection');
-            const listContainer = document.getElementById('selectedItemsList');
-            listContainer.innerHTML = '';
-
-            const matchedItems = cart.filter(item => String(item.food_id) === String(currentSelectedFood.id));
-
-            if (matchedItems.length === 0) {
-                section.classList.add('hidden');
-                return;
-            }
-
-            section.classList.remove('hidden');
-
-            matchedItems.forEach(item => {
-                const row = document.createElement('div');
-                row.className = 'flex justify-between items-center bg-white p-2 rounded-xl border border-sky-100 shadow-sm text-xs';
-
-                let details = [];
-                if (item.egg1 > 0) details.push(`ไข่ดาว ${item.egg1}`);
-                if (item.egg2 > 0) details.push(`ไข่เจียว ${item.egg2}`);
-                if (item.note && item.note.trim() !== '') details.push(item.note.trim());
-                if (item.isCustomPrice) details.push(`฿${item.price_1}`);
-
-                const detailStr = details.length > 0 ? ` (${details.join(', ')})` : '';
-
-                row.innerHTML = `
-                    <div class="font-bold text-slate-700 truncate mr-2">
-                        <span class="text-emerald-600">${item.qty}x</span> ${item.name}${detailStr}
-                    </div>
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <button type="button" onclick="editCartItem('${item.item_id}')" class="text-amber-500 hover:text-amber-600 p-1 font-bold text-sm transition" title="แก้ไข">✏️</button>
-                        <button type="button" onclick="deleteCartItem('${item.item_id}')" class="text-rose-400 hover:text-rose-600 p-1 font-bold text-sm transition" title="ลบ">✕</button>
-                    </div>
-                `;
-                listContainer.appendChild(row);
-            });
-        }
-
-        function editCartItem(itemId) {
-            const item = cart.find(i => String(i.item_id) === String(itemId));
-            if (!item) return;
-
-            editingItemId = item.item_id;
-            modalMainQty = item.qty || 1;
-            modalEgg1Qty = item.egg1 || 0;
-            modalEgg2Qty = item.egg2 || 0;
-
-            document.getElementById('displayMainQty').textContent = modalMainQty;
-            document.getElementById('displayEgg1Qty').textContent = modalEgg1Qty;
-            document.getElementById('displayEgg2Qty').textContent = modalEgg2Qty;
-            document.getElementById('customPriceInput').value = item.isCustomPrice ? item.price_1 : '';
-            document.getElementById('detailNoteInput').value = item.note || '';
-
-            document.getElementById('btnSaveOrderDetail').textContent = '✓ บันทึกการแก้ไข';
-        }
-
-        function deleteCartItem(itemId) {
-            cart = cart.filter(i => String(i.item_id) !== String(itemId));
-            localStorage.setItem('cart', JSON.stringify(cart));
-            updateCartUI();
-
-            if (editingItemId === itemId) {
-                editingItemId = null;
-                resetModalFields();
-            }
-
-            renderSelectedFoodItems();
-            if (currentCategory) {
-                openCategoryFoodModal(currentCategory, document.getElementById('catModalIcon').textContent);
-            }
+            const iframe = document.getElementById('orderPopupIframe');
+            iframe.contentWindow.postMessage({
+                action: 'initFoodDetail',
+                food: food,
+                isSingleDish: isSingleDish,
+                editingItem: editItem
+            }, '*');
         }
 
         function closeOrderDetailModal() {
             document.getElementById('orderDetailModalOverlay').classList.remove('active');
         }
 
-        function changeDetailQty(type, delta) {
-            if (type === 'main') {
-                modalMainQty = Math.max(1, modalMainQty + delta);
-                document.getElementById('displayMainQty').textContent = modalMainQty;
-            } else if (type === 'egg1') {
-                modalEgg1Qty = Math.max(0, modalEgg1Qty + delta);
-                document.getElementById('displayEgg1Qty').textContent = modalEgg1Qty;
-            } else if (type === 'egg2') {
-                modalEgg2Qty = Math.max(0, modalEgg2Qty + delta);
-                document.getElementById('displayEgg2Qty').textContent = modalEgg2Qty;
+        window.addEventListener('message', function(event) {
+            const data = event.data;
+            if (!data || !data.action) return;
+
+            if (data.action === 'closePopup') {
+                closeOrderDetailModal();
+            } else if (data.action === 'saveOrderDetail') {
+                handleSaveFromIframe(data.payload);
             }
-        }
+        });
 
-        // ==========================================
-        // จุดแก้ไขสำคัญ: แนบราคาทุกกลุ่มอย่างครบถ้วน
-        // ==========================================
-        function saveOrderDetailToList() {
-            if (!currentSelectedFood) return;
-
-            const customPriceVal = parseFloat(document.getElementById('customPriceInput').value);
-            const isCustomPrice = !isNaN(customPriceVal) && customPriceVal > 0;
+        function handleSaveFromIframe(payload) {
+            const { food, mainQty, egg1Qty, egg2Qty, customPriceVal, note } = payload;
             
-            // ดึงราคาทั้ง 3 กลุ่มจากก้อนอาหาร
-            const p1 = Number(currentSelectedFood.price_1 ?? currentSelectedFood.price1 ?? currentSelectedFood.price ?? 0);
-            const p2 = Number(currentSelectedFood.price_2 ?? currentSelectedFood.price2 ?? currentSelectedFood.price ?? p1);
-            const p3 = Number(currentSelectedFood.price_3 ?? currentSelectedFood.price3 ?? currentSelectedFood.price ?? p1);
+            const isCustomPrice = customPriceVal !== null;
+            const p1 = Number(food.price_1 ?? food.price1 ?? food.price ?? 0);
+            const p2 = Number(food.price_2 ?? food.price2 ?? food.price ?? p1);
+            const p3 = Number(food.price_3 ?? food.price3 ?? food.price ?? p1);
             const basePrice = isCustomPrice ? customPriceVal : p1;
 
-            const note = (document.getElementById('detailNoteInput').value || '').trim();
+            const extraPrice = (egg1Qty * 10) + (egg2Qty * 10);
+            let options = [];
+            if (egg1Qty > 0) options.push(`ไข่ดาว ${egg1Qty}`);
+            if (egg2Qty > 0) options.push(`ไข่เจียว ${egg2Qty}`);
+            if (note) options.push(note);
+            const optionsText = options.length > 0 ? ` (${options.join(', ')})` : '';
 
             if (editingItemId) {
                 const index = cart.findIndex(i => String(i.item_id) === String(editingItemId));
                 if (index !== -1) {
-                    const extraPrice = (modalEgg1Qty * 10) + (modalEgg2Qty * 10);
-                    let options = [];
-                    if (modalEgg1Qty > 0) options.push(`ไข่ดาว ${modalEgg1Qty}`);
-                    if (modalEgg2Qty > 0) options.push(`ไข่เจียว ${modalEgg2Qty}`);
-                    if (note) options.push(note);
-                    const optionsText = options.length > 0 ? ` (${options.join(', ')})` : '';
-
                     cart[index] = {
                         ...cart[index],
                         price_1: isCustomPrice ? basePrice : p1,
@@ -559,21 +526,21 @@
                         price_3: isCustomPrice ? basePrice : p3,
                         price: basePrice,
                         isCustomPrice: isCustomPrice,
-                        qty: modalMainQty,
-                        egg1: modalEgg1Qty,
-                        egg2: modalEgg2Qty,
-                        fried_egg: modalEgg1Qty,
-                        omelet: modalEgg2Qty,
+                        qty: mainQty,
+                        egg1: egg1Qty,
+                        egg2: egg2Qty,
+                        fried_egg: egg1Qty,
+                        omelet: egg2Qty,
                         note: note,
-                        displayText: `${modalMainQty}x ${currentSelectedFood.name}${optionsText}`,
-                        totalPrice: (basePrice + extraPrice) * modalMainQty
+                        displayText: `${mainQty}x ${food.name}${optionsText}`,
+                        totalPrice: (basePrice + extraPrice) * mainQty
                     };
                 }
             } else {
                 const existingIndex = cart.findIndex(item => 
-                    String(item.food_id) === String(currentSelectedFood.id) &&
-                    Number(item.egg1 || 0) === Number(modalEgg1Qty) &&
-                    Number(item.egg2 || 0) === Number(modalEgg2Qty) &&
+                    String(item.food_id) === String(food.id) &&
+                    Number(item.egg1 || 0) === Number(egg1Qty) &&
+                    Number(item.egg2 || 0) === Number(egg2Qty) &&
                     Boolean(item.isCustomPrice) === Boolean(isCustomPrice) &&
                     (isCustomPrice ? Number(item.price_1) === Number(basePrice) : true) &&
                     (item.note || '').trim() === note
@@ -581,55 +548,39 @@
 
                 if (existingIndex !== -1) {
                     const existingItem = cart[existingIndex];
-                    const newQty = existingItem.qty + modalMainQty;
-                    const extraPrice = (modalEgg1Qty * 10) + (modalEgg2Qty * 10);
-                    
-                    let options = [];
-                    if (modalEgg1Qty > 0) options.push(`ไข่ดาว ${modalEgg1Qty}`);
-                    if (modalEgg2Qty > 0) options.push(`ไข่เจียว ${modalEgg2Qty}`);
-                    if (note) options.push(note);
-                    const optionsText = options.length > 0 ? ` (${options.join(', ')})` : '';
-
+                    const newQty = existingItem.qty + mainQty;
                     cart[existingIndex].qty = newQty;
                     cart[existingIndex].totalPrice = (basePrice + extraPrice) * newQty;
-                    cart[existingIndex].displayText = `${newQty}x ${currentSelectedFood.name}${optionsText}`;
+                    cart[existingIndex].displayText = `${newQty}x ${food.name}${optionsText}`;
                 } else {
-                    const extraPrice = (modalEgg1Qty * 10) + (modalEgg2Qty * 10);
-                    let options = [];
-                    if (modalEgg1Qty > 0) options.push(`ไข่ดาว ${modalEgg1Qty}`);
-                    if (modalEgg2Qty > 0) options.push(`ไข่เจียว ${modalEgg2Qty}`);
-                    if (note) options.push(note);
-                    const optionsText = options.length > 0 ? ` (${options.join(', ')})` : '';
-
                     const itemData = {
                         item_id: Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                        food_id: currentSelectedFood.id,
-                        name: currentSelectedFood.name,
+                        food_id: food.id,
+                        name: food.name,
                         price_1: isCustomPrice ? basePrice : p1,
                         price_2: isCustomPrice ? basePrice : p2,
                         price_3: isCustomPrice ? basePrice : p3,
                         price: basePrice,
                         isCustomPrice: isCustomPrice,
-                        qty: modalMainQty,
-                        egg1: modalEgg1Qty,
-                        egg2: modalEgg2Qty,
-                        fried_egg: modalEgg1Qty,
-                        omelet: modalEgg2Qty,
+                        qty: mainQty,
+                        egg1: egg1Qty,
+                        egg2: egg2Qty,
+                        fried_egg: egg1Qty,
+                        omelet: egg2Qty,
                         note: note,
-                        displayText: `${modalMainQty}x ${currentSelectedFood.name}${optionsText}`,
-                        totalPrice: (basePrice + extraPrice) * modalMainQty
+                        displayText: `${mainQty}x ${food.name}${optionsText}`,
+                        totalPrice: (basePrice + extraPrice) * mainQty
                     };
                     cart.push(itemData);
                 }
             }
 
             localStorage.setItem('cart', JSON.stringify(cart));
-
             updateCartUI();
             closeOrderDetailModal();
-            
+
             if (currentCategory) {
-                openCategoryFoodModal(currentCategory, document.getElementById('catModalIcon').textContent);
+                renderFoodGrid();
             }
         }
 
@@ -662,4 +613,3 @@
     </script>
 </body>
 </html>
-    

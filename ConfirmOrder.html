@@ -189,7 +189,7 @@
 
 <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 shadow-lg z-50">
     <div class="max-w-2xl mx-auto flex gap-2">
-        <a href="OrderEntry.html" class="bg-white hover:bg-gray-50 text-slate-800 border border-slate-300 font-bold py-2.5 px-3 rounded-xl text-xs flex-1 text-center shadow transition flex items-center justify-center">
+        <a href="OrderEntity.html" class="bg-white hover:bg-gray-50 text-slate-800 border border-slate-300 font-bold py-2.5 px-3 rounded-xl text-xs flex-1 text-center shadow transition flex items-center justify-center">
             ⬅️ กลับไปแก้ไข
         </a>
         <button onclick="submitOrder()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex-1 text-center shadow transition">
@@ -220,6 +220,20 @@
         ]);
 
         document.getElementById('orderNoteInput').value = savedOrderNote;
+
+        // ดึงกลุ่มลูกค้าเดิมที่เคยเลือกไว้ ถ้าไม่มี (เข้าครั้งแรกหรือเคลียร์ออเดอร์ไปแล้ว) ให้ default เป็น 1 (ชาวบ้าน)
+        const savedGroupId = localStorage.getItem('selectedGroupId') || '1';
+        const groupSelectElem = document.getElementById('customerGroupSelect');
+        if (groupSelectElem) {
+            groupSelectElem.value = savedGroupId;
+            // ดักจับเหตุการณ์เมื่อมีการเปลี่ยนกลุ่มลูกค้า ให้จำลง localStorage และคำนวณราคาใหม่
+            groupSelectElem.addEventListener('change', function() {
+                localStorage.setItem('selectedGroupId', this.value);
+                renderOrderSummary();
+            });
+        }
+
+        renderOrderSummary();
     });
 
     async function fetchLatestFoods() {
@@ -272,8 +286,12 @@
 
     function renderOrderSummary() {
         cart = JSON.parse(localStorage.getItem('cart')) || [];
-        const currentGroupId = Number(document.getElementById('customerGroupSelect').value) || 1;
-        const selectedLoc = document.getElementById('selectedLocationName').value || '';
+        
+        const groupSelectElem = document.getElementById('customerGroupSelect');
+        const currentGroupId = groupSelectElem ? (Number(groupSelectElem.value) || 1) : 1;
+        
+        const selectedLocElem = document.getElementById('selectedLocationName');
+        const selectedLoc = selectedLocElem ? selectedLocElem.value : '';
 
         const totalItems = cart.length;
         const totalQty = cart.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
@@ -374,11 +392,21 @@
         const zoneName = document.getElementById('selectedZoneName').value;
 
         let subtotal = 0;
-        cart.forEach(item => {
+
+        const processedCart = cart.map(item => {
             const basePrice = getGroupBasePrice(item, groupId);
             const eggCost = (Number(item.fried_egg) || 0) * 10;
             const omeletCost = (Number(item.omelet) || 0) * 10;
-            subtotal += (basePrice + eggCost + omeletCost) * (Number(item.qty) || 1);
+            const unitPrice = basePrice + eggCost + omeletCost;
+
+            subtotal += unitPrice * (Number(item.qty) || 1);
+
+            return {
+                ...item,
+                price: basePrice,
+                price_1: item.price_1 || basePrice,
+                unit_price: unitPrice
+            };
         });
 
         let deliveryFee = 0;
@@ -387,7 +415,7 @@
         }
 
         const orderData = {
-            cart: cart,
+            cart: processedCart,
             groupId: groupId,
             groupName: groupName,
             customerPhone: phone,
@@ -401,6 +429,10 @@
         };
 
         localStorage.setItem('pendingOrder', JSON.stringify(orderData));
+        
+        // เคลียร์ค่ากลุ่มลูกค้าที่เคยบันทึกไว้ เพื่อให้ออเดอร์ถัดไปรีเซ็ตกลับเป็น Default (ชาวบ้าน)
+        localStorage.removeItem('selectedGroupId');
+
         window.location.href = 'PrintOrder.html';
     }
 </script>

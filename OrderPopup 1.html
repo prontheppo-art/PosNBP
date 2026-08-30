@@ -1,0 +1,77 @@
+<!-- Modal 2: ป๊อปอัพเลือกรายละเอียดอาหาร -->
+<div id="orderDetailModalOverlay" class="custom-modal-overlay">
+    <div class="custom-modal-box relative" onclick="event.stopPropagation()">
+        
+        <!-- ปุ่มปิด (X) -->
+        <button type="button" onclick="closeOrderDetailModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold p-1 leading-none">&times;</button>
+
+        <!-- ชื่ออาหาร -->
+        <div id="detailFoodName" class="font-extrabold text-base text-slate-800 mb-3 flex items-center gap-1.5 pr-6">
+            <span>📌</span> <span>ชื่อรายการอาหาร</span>
+        </div>
+
+        <!-- รายการที่สั่งไว้แล้วของเมนูนี้ -->
+        <div id="selectedItemsSection" class="mb-3 hidden">
+            <div class="text-[11px] font-bold text-slate-500 mb-1">รายการที่เลือกไว้แล้ว:</div>
+            <div id="selectedItemsList" class="space-y-1.5 max-h-28 overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- กล่องเลือกจำนวน / ท็อปปิ้ง / หมายเหตุ -->
+        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-3 mb-4">
+            
+            <!-- แถวที่ 1: จำนวน + ราคาพิเศษ -->
+            <div class="flex items-center justify-between gap-1.5">
+                <div class="flex items-center gap-1">
+                    <span class="text-xs font-bold text-slate-700 whitespace-nowrap">จำนวน</span>
+                    <div class="flex items-center bg-white border border-slate-300 rounded-xl overflow-hidden shadow-sm">
+                        <button type="button" onclick="changeDetailQty('main', -1)" class="w-7 h-7 font-bold text-slate-600 hover:bg-slate-100 active:bg-slate-200 flex items-center justify-center">-</button>
+                        <span id="displayMainQty" class="w-6 text-center text-xs font-extrabold text-slate-800">1</span>
+                        <button type="button" onclick="changeDetailQty('main', 1)" class="w-7 h-7 font-bold text-slate-600 hover:bg-slate-100 active:bg-slate-200 flex items-center justify-center">+</button>
+                    </div>
+                </div>
+
+                <!-- ราคาพิเศษ (จัด Flex ใหม่ ไม่ล้นแน่นอน) -->
+                <div class="flex items-center gap-1.5 flex-1 justify-end min-w-0">
+                    <span class="text-xs font-bold text-amber-600 whitespace-nowrap">ราคาพิเศษ</span>
+                    <input type="number" id="customPriceInput" placeholder="ระบุราคา" class="w-20 h-7 px-2 text-right bg-white border border-amber-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-slate-300 shadow-sm">
+                </div>
+            </div>
+
+            <!-- แถวที่ 2: ไข่ดาว / ไข่เจียว (เอาไอคอนออกเรียบร้อย) -->
+            <div id="eggContainerRow" class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/60">
+                <div class="flex items-center justify-between bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
+                    <span class="text-xs font-bold text-slate-700 pl-1">ไข่ดาว</span>
+                    <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden">
+                        <button type="button" onclick="changeDetailQty('egg1', -1)" class="w-6 h-6 text-xs font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center">-</button>
+                        <span id="displayEgg1Qty" class="w-5 text-center text-xs font-bold text-slate-800">0</span>
+                        <button type="button" onclick="changeDetailQty('egg1', 1)" class="w-6 h-6 text-xs font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center">+</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
+                    <span class="text-xs font-bold text-slate-700 pl-1">ไข่เจียว</span>
+                    <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden">
+                        <button type="button" onclick="changeDetailQty('egg2', -1)" class="w-6 h-6 text-xs font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center">-</button>
+                        <span id="displayEgg2Qty" class="w-5 text-center text-xs font-bold text-slate-800">0</span>
+                        <button type="button" onclick="changeDetailQty('egg2', 1)" class="w-6 h-6 text-xs font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- แถวที่ 3: หมายเหตุ -->
+            <div class="pt-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-700 whitespace-nowrap">หมายเหตุ</span>
+                    <input type="text" id="detailNoteInput" placeholder="(เช่น เผ็ดน้อย, ไม่ใส่ผัก)" class="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-300 shadow-sm">
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ปุ่มบันทึก -->
+        <button type="button" id="btnSaveOrderDetail" onclick="saveOrderDetailToList()" class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 rounded-xl text-sm shadow transition flex items-center justify-center gap-1">
+            ✓ บันทึกรายการ
+        </button>
+
+    </div>
+</div>
