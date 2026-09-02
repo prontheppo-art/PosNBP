@@ -1,3 +1,11 @@
+<!--
+  ========================================
+  [File Note]
+  - File Name: index.html
+  - Included JavaScript: None (Inline Script Only)
+  - Included iframe(s): None
+  ========================================
+-->
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -116,17 +124,17 @@
         <!-- ปุ่มเมนูต่าง ๆ -->
         <div class="menu-list">
             <!-- 1. หน้าสั่งอาหาร -->
-            <button type="button" onclick="goToPage('OrderEntity.html')" class="menu-btn btn-blue">
+            <button type="button" onclick="goToPage('orderentity.html')" class="menu-btn btn-blue">
                 <span>📝 หน้าสั่งอาหาร</span>
             </button>
 
             <!-- 2. รายงานการขาย -->
-            <button type="button" onclick="goToPage('PageReport.html')" class="menu-btn btn-amber">
+            <button type="button" onclick="goToPage('report_index.html')" class="menu-btn btn-amber">
                 <span>📊 รายงานการขาย</span>
             </button>
 
             <!-- 3. สต็อกสินค้าคงเหลือ -->
-            <button type="button" onclick="goToPage('StockManager.html')" class="menu-btn btn-purple">
+            <button type="button" onclick="goToPage('stockmanager.html')" class="menu-btn btn-purple">
                 <span>📦 สต็อกสินค้าคงเหลือ</span>
             </button>
 
@@ -196,7 +204,7 @@
 
     function openAdminModal() {
         if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
-            window.location.href = 'PageAdmin.html';
+            window.location.href = 'admin_index.html';
             return;
         }
         
@@ -231,7 +239,7 @@
 
         if (inputPass === savedPassword) {
             sessionStorage.setItem('isAdminLoggedIn', 'true');
-            window.location.href = 'PageAdmin.html';
+            window.location.href = 'admin_index.html';
         } else {
             indexFailedAttempts++;
             document.getElementById('indexAdminPasswordInput').value = '';

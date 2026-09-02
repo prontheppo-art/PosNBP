@@ -1,0 +1,464 @@
+<!--
+  ========================================
+  [File Note]
+  - File Name: reportsummary.html
+  - Included JavaScript: key.js, slender.js
+  - Links: report_index.html
+  ========================================
+-->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <title>สรุปยอดขาย - ลาบหนองบัวลำภู</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- เรียกไฟล์คีย์แยกตามเงื่อนไขเพื่อดึง SUPABASE_URL และ SUPABASE_KEY -->
+    <script src="key.js"></script>
+    <!-- เรียกไฟล์ Calendar System -->
+    <script src="slender.js"></script>
+
+    <style>
+      :root {
+        --bg-color: #f8fafc;
+      }
+
+      /* CSS เฉพาะของ UI แอป */
+      html, body { 
+          height: 100%; 
+          margin: 0; 
+          padding: 0; 
+          overflow: hidden; 
+          font-family: 'Sarabun', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+          background-color: var(--bg-color); 
+          touch-action: manipulation; 
+          -webkit-text-size-adjust: 100%;
+          -webkit-user-select: none;
+          user-select: none;
+      }
+
+      .app-container { 
+          max-width: 500px; 
+          margin: 0 auto; 
+          height: 100dvh; 
+          background: #ffffff; 
+          display: grid; 
+          grid-template-rows: auto auto 1fr auto; 
+          box-sizing: border-box; 
+          overflow: hidden;
+      }
+
+      ::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center antialiased">
+
+    <div class="app-container shadow-2xl w-full border border-slate-100">
+        <!-- Header Section (Fixed Top) -->
+        <div class="py-3 px-4 bg-white border-b border-slate-100 flex justify-center items-center shrink-0 shadow-2xs">
+            <h1 class="font-black text-lg text-slate-800 tracking-tight flex items-center gap-1.5">
+                📊 สรุปยอดขาย
+            </h1>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="p-3 bg-slate-50 border-b border-slate-100 shrink-0">
+            <div class="bg-slate-200/60 p-1 rounded-xl grid grid-cols-4 gap-1">
+                <button type="button" onclick="filterOrders('today', this)" class="py-1.5 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition filter-btn cursor-pointer">วันนี้</button>
+                <button type="button" onclick="filterOrders('week', this)" class="py-1.5 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition filter-btn cursor-pointer">สัปดาห์นี้</button>
+                <button type="button" onclick="filterOrders('month', this)" class="py-1.5 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition filter-btn cursor-pointer">เดือนนี้</button>
+                
+                <!-- ปุ่มเรียกใช้งาน CalendarSystem จาก slender.js -->
+                <button type="button" onclick="openCustomCalendar()" id="dateFilterBtn" class="py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:text-slate-900 transition filter-btn bg-transparent flex items-center justify-center truncate px-1 cursor-pointer">
+                    <span id="dateButtonText">📅 เลือกวัน</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Content Section (Scrollable Container) -->
+        <div id="orderHistoryList" class="p-3 overflow-y-auto space-y-2 bg-slate-100" style="-webkit-overflow-scrolling: touch;">
+            <div class="text-center text-slate-400 text-xs py-10 font-medium">⏳ กำลังโหลดข้อมูลประวัติ...</div>
+        </div>
+
+        <!-- Footer Section -->
+        <div class="p-3 bg-white border-t border-slate-100 shrink-0 flex items-center gap-2">
+            <div class="flex-1 bg-slate-800 text-white rounded-xl px-3.5 py-2 flex justify-between items-center shadow-xs">
+                <div>
+                    <div id="summaryLabel" class="text-[10px] text-slate-300 font-bold">ยอดรวมทั้งหมด</div>
+                    <div class="text-[9px] text-slate-400">จากออร์เดอร์ที่แสดง</div>
+                </div>
+                <div class="text-right">
+                    <span id="summaryTotalAmount" class="text-sm font-black text-emerald-400">0 ฿</span>
+                </div>
+            </div>
+
+            <a href="report_index.html" class="bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-bold px-4 py-3 rounded-xl text-xs text-center transition flex items-center justify-center gap-1.5 shadow-md no-underline shrink-0">
+                ⬅️ กลับหน้าศูนย์รวมรายงาน
+            </a>
+        </div>
+    </div>
+
+    <!-- โมดอลรายละเอียดออร์เดอร์ -->
+    <div id="detailModal" onclick="handleOutsideClick(event)" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden transform scale-95 transition-transform duration-200" id="detailBox">
+            <div class="bg-slate-800 text-white p-3.5 flex justify-between items-center">
+                <h3 class="text-xs font-extrabold text-amber-400">📋 รายละเอียดออร์เดอร์</h3>
+                <button type="button" onclick="closeDetailModal()" class="w-7 h-7 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex items-center justify-center font-bold text-xs transition cursor-pointer">✕</button>
+            </div>
+            <div id="detailContent" class="p-4 overflow-y-auto space-y-2 text-xs text-slate-700 flex-1 bg-slate-100"></div>
+            <div class="p-3 bg-white border-t border-slate-100">
+                <button type="button" onclick="closeDetailModal()" class="w-full bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">ปิดหน้าต่าง</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ป้องกันการซูมหน้าจอด้วยนิ้ว
+        document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+        document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
+        document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = new Date().getTime();
+            if (now - lastTouchEnd <= 300) e.preventDefault();
+            lastTouchEnd = now;
+        }, { passive: false });
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
+
+        let db;
+        let allOrders = [];
+
+        // คำนวณวันที่ปัจจุบันของประเทศไทย (GMT+7)
+        function getThaiToday() {
+            const now = new Date();
+            const tzOffset = 7 * 60; // 7 ชั่วโมงเป็นนาที
+            return new Date(now.getTime() + (tzOffset + now.getTimezoneOffset()) * 60000);
+        }
+
+        function cleanGroupName(name) {
+            if (!name) return 'ทั่วไป';
+            let cleaned = name
+                .replace(/ชาวบ้าน\s*\/\s*/g, '')
+                .replace(/สมาชิก\s*VIP\s*\/\s*/g, '')
+                .trim();
+            if (cleaned.includes(' ')) {
+                cleaned = cleaned.split(' ')[0];
+            }
+            return cleaned;
+        }
+
+        function getOrderDateStr(order) {
+            const rawDate = order.order_date || order.created_at || order.date;
+            if (!rawDate) return '';
+            
+            if (typeof rawDate === 'string') {
+                return rawDate.split('T')[0].split(' ')[0];
+            }
+            
+            const d = new Date(rawDate);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        function parseLocalDate(dateStr) {
+            if (!dateStr) return new Date();
+            const cleanStr = dateStr.split('T')[0].split(' ')[0];
+            const [y, m, d] = cleanStr.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        function formatDateThai(dateString) {
+            if (!dateString) return '';
+            const parts = dateString.split('T')[0].split(' ')[0].split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return dateString;
+        }
+
+        // ฟังก์ชันประมวลผลนับจำนวนบิลออเดอร์ในแต่ละวัน (คัดเฉพาะที่ไม่ถูก cancel)
+        function getOrderCounts() {
+            const counts = {};
+            allOrders.forEach(order => {
+                const dateStr = getOrderDateStr(order);
+                const status = (order.status || '').toLowerCase();
+                if (dateStr && status !== 'cancelled') {
+                    counts[dateStr] = (counts[dateStr] || 0) + 1;
+                }
+            });
+            return counts;
+        }
+
+        // ปิด Calendar เมื่อแตะพื้นที่ภายนอก
+        document.addEventListener('pointerdown', function(e) {
+            const calendarModal = document.getElementById('slenderCalendarModal') || document.getElementById('calendarModal') || document.querySelector('.slender-calendar-overlay');
+            if (calendarModal && !calendarModal.classList.contains('hidden') && calendarModal.style.display !== 'none') {
+                const calendarContent = calendarModal.querySelector('.calendar-content') || calendarModal.querySelector('.bg-white') || calendarModal.children[0];
+                
+                if (calendarContent && !calendarContent.contains(e.target) && !e.target.closest('#dateFilterBtn')) {
+                    if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.close === 'function') {
+                        CalendarSystem.close();
+                    } else {
+                        calendarModal.classList.add('hidden');
+                        calendarModal.style.display = 'none';
+                    }
+                }
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (typeof window.supabaseClient !== 'undefined') {
+                db = window.supabaseClient;
+            } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
+                db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+
+            if (typeof CalendarSystem !== 'undefined') {
+                CalendarSystem.init((selectedDateStr) => {
+                    const btn = document.getElementById('dateFilterBtn');
+                    document.querySelectorAll('.filter-btn').forEach(b => {
+                        b.classList.remove('bg-white', 'shadow-xs', 'text-slate-800');
+                        b.classList.add('text-slate-600');
+                    });
+                    btn.classList.add('bg-white', 'shadow-xs', 'text-slate-800');
+                    btn.classList.remove('text-slate-600');
+
+                    document.getElementById('dateButtonText').textContent = formatDateThai(selectedDateStr);
+
+                    const filtered = allOrders.filter(o => getOrderDateStr(o) === selectedDateStr);
+
+                    document.getElementById('summaryLabel').textContent = `ยอดรวมวันที่ ${formatDateThai(selectedDateStr)}`;
+                    renderOrderHistory(filtered);
+                });
+            }
+
+            if (db) {
+                await fetchOrdersFromDatabase();
+            } else {
+                document.getElementById('orderHistoryList').innerHTML = `<div class="text-center text-rose-500 text-xs py-10">❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ (โปรดตรวจสอบ key.js)</div>`;
+            }
+        });
+
+        async function fetchOrdersFromDatabase() {
+            const container = document.getElementById('orderHistoryList');
+            try {
+                // ดึงข้อมูลรายการออเดอร์ทั้งหมด ยกเว้นรายการที่ยกเลิก (cancelled)
+                const { data, error } = await db.from('orders')
+                    .select('*')
+                    .neq('status', 'cancelled')
+                    .order('id', { ascending: true });
+                
+                if (error) throw error;
+                
+                allOrders = data || [];
+                renderOrderHistory(allOrders);
+                document.getElementById('summaryLabel').textContent = "ยอดรวมทั้งหมด";
+            } catch (err) {
+                console.error('Error fetching orders:', err);
+                container.innerHTML = `<div class="text-center text-rose-400 text-xs py-10">ไม่สามารถโหลดข้อมูลออร์เดอร์ได้ (${err.message})</div>`;
+            }
+        }
+
+        function getOrderTotalAmount(order) {
+            if (order.total_amount && Number(order.total_amount) > 0) return Number(order.total_amount);
+            if (order.total_price && Number(order.total_price) > 0) return Number(order.total_price);
+            if (order.total && Number(order.total) > 0) return Number(order.total);
+
+            let items = order.items || order.order_items;
+            if (typeof items === 'string') {
+                try { items = JSON.parse(items); } catch(e) { items = []; }
+            }
+            if (items && !Array.isArray(items) && typeof items === 'object') {
+                items = [items];
+            }
+            if (!Array.isArray(items)) return 0;
+
+            return items.reduce((sum, i) => {
+                const price = parseFloat(i.price || i.unit_price || i.p || 0);
+                const qty = parseFloat(i.qty || i.quantity || 1);
+                return sum + (price * qty);
+            }, 0);
+        }
+
+        function filterOrders(type, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.remove('bg-white', 'shadow-xs', 'text-slate-800');
+                b.classList.add('text-slate-600');
+            });
+            if (btn) {
+                btn.classList.add('bg-white', 'shadow-xs', 'text-slate-800');
+                btn.classList.remove('text-slate-600');
+            }
+
+            document.getElementById('dateButtonText').textContent = "📅 เลือกวัน";
+            if (typeof CalendarSystem !== 'undefined') {
+                CalendarSystem.selectedDateStr = "";
+            }
+
+            // ใช้เวลาประเทศไทยในการกรองข้อมูล
+            const thaiNow = getThaiToday();
+            const year = thaiNow.getFullYear();
+            const month = String(thaiNow.getMonth() + 1).padStart(2, '0');
+            const day = String(thaiNow.getDate()).padStart(2, '0');
+            const todayStr = `${year}-${month}-${day}`;
+
+            let filtered = allOrders;
+            let labelText = "ยอดรวมทั้งหมด";
+
+            if (type === 'today') {
+                filtered = allOrders.filter(o => getOrderDateStr(o) === todayStr);
+                labelText = "ยอดรวมวันนี้";
+            } else if (type === 'week') {
+                const todayLocal = new Date(thaiNow.getFullYear(), thaiNow.getMonth(), thaiNow.getDate());
+                const dayOfWeek = todayLocal.getDay();
+                const distanceToMonday = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+                
+                const startOfWeek = new Date(todayLocal);
+                startOfWeek.setDate(todayLocal.getDate() - distanceToMonday);
+                
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+                filtered = allOrders.filter(o => {
+                    const orderDateStr = getOrderDateStr(o);
+                    if (!orderDateStr) return false;
+                    const orderDate = parseLocalDate(orderDateStr);
+                    return orderDate >= startOfWeek && orderDate <= endOfWeek;
+                });
+                labelText = "ยอดรวมสัปดาห์นี้";
+            } else if (type === 'month') {
+                const currentMonthPrefix = `${year}-${month}`;
+                filtered = allOrders.filter(o => getOrderDateStr(o).startsWith(currentMonthPrefix));
+                labelText = "ยอดรวมเดือนนี้";
+            }
+
+            document.getElementById('summaryLabel').textContent = labelText;
+            renderOrderHistory(filtered);
+        }
+
+        // ฟังก์ชันเปิด CalendarSystem พร้อมส่งข้อมูลนับบิลรายวัน
+        function openCustomCalendar() {
+            if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.open === 'function') {
+                const eventCounts = getOrderCounts();
+                CalendarSystem.open(CalendarSystem.selectedDateStr, eventCounts);
+            } else {
+                alert("ระบบปฏิทินไม่พร้อมใช้งาน");
+            }
+        }
+
+        function renderOrderHistory(orders) {
+            const container = document.getElementById('orderHistoryList');
+            
+            const sumTotal = orders.reduce((sum, order) => sum + getOrderTotalAmount(order), 0);
+            document.getElementById('summaryTotalAmount').textContent = sumTotal.toLocaleString() + ' ฿';
+
+            if (orders.length === 0) {
+                container.innerHTML = `<div class="text-center text-slate-400 text-xs py-10 font-medium">ไม่พบประวัติออร์เดอร์ในช่วงเวลานี้</div>`;
+                return;
+            }
+
+            const sortedOrders = [...orders].sort((a, b) => {
+                const dateA = getOrderDateStr(a);
+                const dateB = getOrderDateStr(b);
+                if (dateA !== dateB) return dateA.localeCompare(dateB);
+                return a.id - b.id;
+            });
+
+            container.innerHTML = sortedOrders.map(order => {
+                const dateFormatted = formatDateThai(getOrderDateStr(order));
+                const customerGroup = cleanGroupName(order.customer_group || order.group_name || order.customer_type);
+                const totalAmount = getOrderTotalAmount(order).toLocaleString();
+                
+                return `
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center shadow-xs hover:border-blue-400 transition gap-2">
+                        <div class="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
+                            <span class="font-bold text-xs text-slate-700 shrink-0">${dateFormatted}</span>
+                            <span class="font-black text-rose-600 text-sm shrink-0">${totalAmount} ฿</span>
+                            <span class="font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-lg text-xs truncate max-w-[130px]" title="${customerGroup}">${customerGroup}</span>
+                        </div>
+                        <button type="button" onclick="openDetailModal(${order.id})" class="text-blue-600 hover:text-blue-800 p-1.5 transition shrink-0 ml-auto cursor-pointer rounded-lg hover:bg-blue-50" title="ดูรายละเอียด">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function openDetailModal(orderId) {
+            const contentContainer = document.getElementById('detailContent');
+            contentContainer.innerHTML = `<div class="text-center text-slate-400 py-4 font-medium">กำลังโหลดรายการ...</div>`;
+            
+            const modal = document.getElementById('detailModal');
+            const box = document.getElementById('detailBox');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            box.classList.remove('scale-95');
+
+            try {
+                const targetOrder = allOrders.find(o => o.id == orderId);
+                let items = targetOrder ? (targetOrder.items || targetOrder.order_items) : null;
+                
+                if (typeof items === 'string') {
+                    try { items = JSON.parse(items); } catch(e) { items = []; }
+                }
+                
+                if (Array.isArray(items) && items.length > 0) {
+                    renderItemsList(items);
+                    return;
+                }
+
+                const { data: dbItems, error } = await db.from('order_items').select('*').eq('order_id', orderId);
+                if (error) throw error;
+
+                if (dbItems && dbItems.length > 0) {
+                    renderItemsList(dbItems);
+                } else {
+                    contentContainer.innerHTML = `<div class="text-center text-slate-400 py-4 font-medium">ไม่มีรายการสินค้า</div>`;
+                }
+            } catch (err) {
+                console.error('Error loading order items:', err);
+                contentContainer.innerHTML = `<div class="text-center text-rose-400 py-4 font-medium">ไม่สามารถโหลดรายการสินค้าได้</div>`;
+            }
+        }
+
+        function renderItemsList(items) {
+            const contentContainer = document.getElementById('detailContent');
+            contentContainer.innerHTML = items.map(i => {
+                const qty = parseFloat(i.qty || i.quantity || 1);
+                const price = parseFloat(i.price || i.unit_price || i.p || 0);
+                const name = i.food_name || i.name || i.title || 'สินค้า';
+                const noteStr = (i.note || i.comment) ? ` <span class="text-rose-500 italic">(${i.note || i.comment})</span>` : '';
+                return `
+                    <div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-200">
+                        <span class="font-medium text-slate-800">• ${name}${noteStr} (x${qty})</span>
+                        <span class="font-bold text-slate-800">${(price * qty).toLocaleString()} ฿</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function closeDetailModal() {
+            const modal = document.getElementById('detailModal');
+            const box = document.getElementById('detailBox');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            box.classList.add('scale-95');
+        }
+
+        function handleOutsideClick(event) {
+            if (event.target.id === 'detailModal') {
+                closeDetailModal();
+            }
+        }
+    </script>
+</body>
+</html>

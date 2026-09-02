@@ -1,0 +1,319 @@
+<!--
+  ========================================
+  [File Note]
+  - File Name: reportdaily.html
+  - Included JavaScript: key.js, slender.js
+  - Links: reportmenu.html
+  ========================================
+-->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <title>รายงานออร์เดอร์รายวัน - ลาบหนองบัวลำภู</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- เรียกไฟล์คีย์แยกตามเงื่อนไขเพื่อดึง SUPABASE_URL และ SUPABASE_KEY -->
+    <script src="key.js"></script>
+    <!-- เรียกไฟล์ Calendar System -->
+    <script src="slender.js"></script>
+    
+    <style>
+      :root {
+        --bg-color: #f8fafc;
+      }
+
+      /* CSS เฉพาะของ UI แอป */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: 'Sarabun', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: var(--bg-color);
+        touch-action: manipulation;
+        -webkit-text-size-adjust: 100%;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      .app-container {
+        max-width: 500px;
+        margin: 0 auto;
+        height: 100dvh;
+        background: #ffffff;
+        display: grid;
+        grid-template-rows: auto auto 1fr auto;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+
+      ::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center antialiased">
+
+<div class="app-container shadow-2xl w-full border border-slate-100">
+    <!-- Header Section (Fixed Top) -->
+    <div class="py-3 px-4 bg-white border-b border-slate-100 flex justify-center items-center shrink-0 shadow-2xs">
+        <h1 class="font-black text-lg text-slate-800 tracking-tight flex items-center gap-1.5">
+            📊 รายงานออร์เดอร์รายวัน
+        </h1>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="p-3 bg-slate-50 border-b border-slate-100 space-y-2 shrink-0">
+        <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-100 flex items-center justify-between">
+            <span class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                📅 เลือกวันที่:
+            </span>
+            <button type="button" onclick="openCalendar()" id="btnSelectedDate" class="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-blue-700 shadow-xs flex items-center gap-1 cursor-pointer">
+                <span id="txtSelectedDate" class="font-bold text-blue-600">--/--/----</span>
+            </button>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-xs"><div class="text-[10px] text-slate-500 font-bold">จำนวนบิลวันนี้</div><div class="text-sm font-black text-slate-800" id="summaryCount">0 บิล</div></div>
+            <div class="bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 shadow-xs"><div class="text-[10px] text-emerald-700 font-bold">ยอดขายรวมสุทธิ</div><div class="text-sm font-black text-emerald-600" id="summaryTotal">0 บาท</div></div>
+        </div>
+    </div>
+
+    <!-- Content Section (Scrollable Container) -->
+    <div class="p-3 overflow-y-auto space-y-3 bg-slate-100" id="dailyOrdersContainer" style="-webkit-overflow-scrolling: touch;"></div>
+
+    <!-- Footer Section -->
+    <div class="p-3 bg-white border-t border-slate-100 shrink-0">
+        <a href="report_index.html" class="w-full bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-bold py-3 rounded-xl text-xs text-center transition flex items-center justify-center gap-1.5 shadow-md no-underline">
+            ⬅️ กลับหน้าศูนย์รวมรายงาน
+        </a>
+    </div>
+</div>
+
+<script>
+    let db;
+    let allOrdersCache = [];
+    
+    // ป้องกัน Gesture ซูมบน iOS/Mobile
+    document.addEventListener('gesturestart', function (e) { 
+        e.preventDefault(); 
+    }, { passive: false });
+
+    // ฟังก์ชั่นดึงวันที่ปัจจุบันของประเทศไทย (YYYY-MM-DD)
+    function getTodayString() {
+        const now = new Date();
+        const tzOffset = 7 * 60; // 7 ชั่วโมงเป็นนาที
+        const localTime = new Date(now.getTime() + (tzOffset + now.getTimezoneOffset()) * 60000);
+
+        const year = localTime.getFullYear();
+        const month = String(localTime.getMonth() + 1).padStart(2, '0');
+        const day = String(localTime.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // ฟังก์ชั่นแปลงรูปแบบวันที่ YYYY-MM-DD เป็น DD/MM/YYYY
+    function formatDateThai(dateString) {
+        if (!dateString) return '';
+        const parts = dateString.split('-');
+        if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        return dateString;
+    }
+
+    let currentSelectedDate = getTodayString();
+
+    // ฟังก์ชั่นอัปเดตข้อความวันที่บนหน้าจอ
+    function updateDateDisplay(dateStr) {
+        currentSelectedDate = dateStr || getTodayString();
+        const txtDate = document.getElementById('txtSelectedDate');
+        if (txtDate) {
+            txtDate.textContent = formatDateThai(currentSelectedDate);
+        }
+    }
+
+    // ฟังก์ชั่นสรุปจำนวนบิลแยกตามวันที่
+    function getOrderCounts() {
+        const counts = {};
+        allOrdersCache.forEach(o => {
+            const rawDate = o.order_date || o.created_at || o.date;
+            if (rawDate) {
+                const oDate = String(rawDate).split('T')[0].split(' ')[0];
+                const status = (o.status || '').toLowerCase();
+                if (status !== 'cancelled') {
+                    counts[oDate] = (counts[oDate] || 0) + 1;
+                }
+            }
+        });
+        return counts;
+    }
+
+    // ฟังก์ชั่นเปิดปฏิทินพร้อมส่งวัตถุข้อมูลจำนวนบิล
+    function openCalendar() {
+        if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.open === 'function') {
+            const counts = getOrderCounts();
+            CalendarSystem.open(currentSelectedDate, counts);
+        } else {
+            console.warn("CalendarSystem is not available");
+        }
+    }
+
+    // ระบบตรวจจับการแตะ/คลิกภายนอกกล่องปฏิทินเพื่อปิด (Outside Click Handler)
+    document.addEventListener('pointerdown', function(e) {
+        const calendarModal = document.getElementById('slenderCalendarModal') || document.getElementById('calendarModal') || document.querySelector('.slender-calendar-overlay');
+        if (calendarModal && !calendarModal.classList.contains('hidden') && calendarModal.style.display !== 'none') {
+            const calendarContent = calendarModal.querySelector('.calendar-content') || calendarModal.querySelector('.bg-white') || calendarModal.children[0];
+            
+            if (calendarContent && !calendarContent.contains(e.target) && !e.target.closest('#btnSelectedDate')) {
+                if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.close === 'function') {
+                    CalendarSystem.close();
+                } else {
+                    calendarModal.classList.add('hidden');
+                    calendarModal.style.display = 'none';
+                }
+            }
+        }
+    });
+
+    window.onload = function() {
+        updateDateDisplay(currentSelectedDate);
+
+        if (typeof window.supabaseClient !== 'undefined') {
+            db = window.supabaseClient;
+        } else if (typeof window.supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
+            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } else {
+            console.error("Critical Error: ไม่สามารถเชื่อมต่อ Supabase ได้");
+        }
+
+        if (typeof CalendarSystem !== 'undefined' && typeof CalendarSystem.init === 'function') {
+            CalendarSystem.init((selectedDate) => {
+                if (selectedDate) {
+                    updateDateDisplay(selectedDate);
+                    filterOrdersByDate();
+                }
+            });
+        }
+
+        fetchOrdersForReport();
+    };
+
+    async function fetchOrdersForReport() {
+        if (!db) return;
+        
+        const { data, error } = await db.from('orders').select('*').order('id', { ascending: true });
+        
+        if (error) {
+            console.error("Error fetching orders:", error);
+            return;
+        }
+
+        allOrdersCache = data || [];
+        filterOrdersByDate();
+    }
+
+    function filterOrdersByDate() {
+        const container = document.getElementById('dailyOrdersContainer');
+        if (!container) return;
+        
+        container.innerHTML = '';
+
+        let filtered = allOrdersCache.filter(o => {
+            let oDate = '';
+            
+            const rawDate = o.order_date || o.created_at || o.date;
+            if (rawDate) {
+                oDate = String(rawDate).split('T')[0].split(' ')[0];
+            }
+            
+            const status = (o.status || '').toLowerCase();
+            return oDate === currentSelectedDate && status !== 'cancelled';
+        });
+        
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="text-center text-xs text-slate-400 py-8 font-medium">📭 ไม่พบออร์เดอร์ในวันที่ ${formatDateThai(currentSelectedDate)}</div>`;
+            document.getElementById('summaryCount').textContent = '0 บิล';
+            document.getElementById('summaryTotal').textContent = '0 บาท';
+            return;
+        }
+
+        let total = 0;
+        filtered.forEach((order, index) => {
+            let items = [];
+            if (typeof order.items === 'string') {
+                try { items = JSON.parse(order.items); } catch(e) { items = []; }
+            } else if (Array.isArray(order.items)) {
+                items = order.items;
+            } else if (typeof order.order_items === 'string') {
+                try { items = JSON.parse(order.order_items); } catch(e) { items = []; }
+            } else if (Array.isArray(order.order_items)) {
+                items = order.order_items;
+            }
+
+            let billTotal = Number(order.total_price || order.total_amount || order.total || 0);
+            
+            if (billTotal === 0 && items.length > 0) {
+                billTotal = items.reduce((sum, item) => {
+                    let q = Number(item.qty || item.quantity || 1);
+                    let p = Number(item.price || item.unit_price || 0);
+                    return sum + (q * p);
+                }, 0);
+            }
+
+            total += billTotal;
+            
+            let itemsHtml = items.map(item => {
+                let itemQty = Number(item.qty || item.quantity || 1);
+                let unitPrice = Number(item.price || item.unit_price || 0);
+                let itemTotalPrice = (item.total_price || item.sum) ? Number(item.total_price || item.sum) : (unitPrice * itemQty);
+                let itemName = item.name || item.food_name || item.title || 'ไม่ระบุชื่อรายการ';
+                
+                return `<tr class="border-b border-slate-100">
+                    <td class="p-1.5 text-xs text-slate-800 font-medium">${itemName}</td>
+                    <td class="p-1.5 text-xs text-center font-bold">x${itemQty}</td>
+                    <td class="p-1.5 text-xs text-right font-bold text-blue-600">${itemTotalPrice.toLocaleString()}.-</td>
+                </tr>`;
+            }).join('');
+
+            // --- ส่วนที่ปรับแก้ไขการแสดงผลกลุ่มลูกค้า / สถานที่ ---
+            let groupLabel = order.customer_group || order.group_name || order.customer_type || '';
+
+            if (groupLabel.includes('นักท่องเที่ยว')) {
+                const loc = order.location_name || '';
+                const zone = order.zone_name || '';
+                const fullLocation = [loc, zone].filter(Boolean).join(' ');
+                groupLabel = fullLocation || 'นักท่องเที่ยว';
+            } else if (groupLabel.includes(' ')) {
+                groupLabel = groupLabel.split(' ')[0];
+            }
+
+            if (!groupLabel) {
+                groupLabel = 'ทั่วไป';
+            }
+            // --------------------------------------------------
+            
+            container.innerHTML += `
+                <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2">
+                    <div class="flex justify-between border-b border-slate-100 pb-2">
+                        <span class="font-bold text-xs text-amber-900 bg-amber-100 px-2 py-0.5 rounded">📄 บิลที่ #${index + 1}</span>
+                        <span class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">📍 ${groupLabel}</span>
+                    </div>
+                    <table class="w-full text-left">
+                        <tbody>${itemsHtml}</tbody>
+                    </table>
+                    <div class="flex justify-between pt-1 text-xs font-bold border-t border-slate-100">
+                        <span>ยอดรวม:</span>
+                        <span class="text-emerald-600 text-sm font-black">${billTotal.toLocaleString()} บาท</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        document.getElementById('summaryCount').textContent = `${filtered.length} บิล`;
+        document.getElementById('summaryTotal').textContent = `${total.toLocaleString()} บาท`;
+    }
+</script>
+</body>
+</html>

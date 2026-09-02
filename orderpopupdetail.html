@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>รายละเอียดเมนู</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        html, body { 
+            font-family: 'Sarabun', sans-serif; 
+            background: transparent; 
+            margin: 0; 
+            padding: 0; 
+            user-select: none;
+            overflow: hidden; /* ล็อคไม่ให้หน้าจอหลัก/ป๊อปอัพเลื่อน */
+            -webkit-text-size-adjust: 100%;
+        }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] { -moz-appearance: textfield; }
+        
+        /* ปุ่ม +/- ขนาดเท่ากันเป๊ะ */
+        .counter-btn {
+            width: 1.5rem;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.8rem;
+            color: #334155;
+            transition: background-color 0.15s;
+        }
+        .counter-btn:active { background-color: #e2e8f0; }
+        .counter-val {
+            flex: 1;
+            text-align: center;
+            font-weight: 800;
+            font-size: 0.8rem;
+            color: #1e293b;
+        }
+
+        /* เปิดให้ Scroll ลื่นไหลเฉพาะโซนรายการที่เลือก */
+        .scrollable-list {
+            max-height: 105px;
+            overflow-y: auto !important;
+            touch-action: pan-y !important;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Scrollbar ขนาดกะทัดรัด */
+        .scrollable-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .scrollable-list::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .scrollable-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="p-2 overflow-hidden">
+    <!-- Backdrop ล็อคอยู่กับที่พอดีหน้าจอ (ไม่สกอร์) -->
+    <div id="backdrop" onclick="handleOutsideClick(event)" class="w-full h-screen flex justify-center items-start pt-2 px-1 overflow-hidden">
+        
+        <div id="modalContainer" onclick="event.stopPropagation()" class="bg-white rounded-3xl p-3.5 shadow-xl border-2 border-emerald-400 w-full max-w-sm mx-auto transition-all duration-150">
+            
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-2.5">
+                <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span class="text-base shrink-0">📌</span>
+                    <h3 id="foodTitle" class="font-extrabold text-sm text-slate-800 truncate">ชื่อรายการ</h3>
+                </div>
+                <button type="button" onclick="closePopup()" class="text-slate-400 hover:text-slate-600 text-lg font-bold px-1 leading-none">&times;</button>
+            </div>
+
+            <!-- Section รายการที่เลือกไว้แล้ว (สกอร์ได้เฉพาะกล่องนี้เท่านั้น!) -->
+            <div id="existingCartSection" class="hidden mb-2.5 p-2 bg-sky-50/80 border border-sky-200 rounded-2xl">
+                <div class="flex justify-between items-center mb-1 px-1">
+                    <div class="text-[11px] font-bold text-sky-800 flex items-center gap-1">
+                        🛒 <span>รายการที่เลือกไว้แล้ว:</span>
+                    </div>
+                    <span id="itemCountBadge" class="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
+                        0 รายการ
+                    </span>
+                </div>
+                <div id="existingItemsList" class="space-y-1 scrollable-list pr-1"></div>
+            </div>
+
+            <!-- Controls Box -->
+            <div class="border border-slate-200 rounded-2xl p-3 mb-3 space-y-2.5 bg-slate-50/50">
+                
+                <!-- Grid 2 คอลัมน์สำหรับกลุ่ม จำนวน/ไข่ดาว (ซ้าย) และ ราคาพิเศษ/ไข่เจียว (ขวา) -->
+                <div class="grid grid-cols-2 gap-x-2 gap-y-2">
+                    
+                    <!-- 1. จำนวน (แถว 1 ซ้าย) -->
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-extrabold text-slate-700">จำนวน</span>
+                        <div class="w-20 h-7 flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-sm">
+                            <button type="button" onclick="adjustQty(-1)" class="counter-btn">-</button>
+                            <span id="qtyDisplay" class="counter-val">1</span>
+                            <button type="button" onclick="adjustQty(1)" class="counter-btn">+</button>
+                        </div>
+                    </div>
+
+                    <!-- 2. ราคาพิเศษ (แถว 1 ขวา) -->
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-extrabold text-amber-600">ราคาพิเศษ</span>
+                        <input type="number" id="customPriceInput" placeholder="ระบุราคา" class="w-20 h-7 px-1 bg-white border border-amber-300 rounded-lg text-xs text-center font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-sm">
+                    </div>
+
+                    <!-- 3. ไข่ดาว (แถว 2 ซ้าย) -->
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-extrabold text-slate-700">ไข่ดาว</span>
+                        <div class="w-20 h-7 flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-sm">
+                            <button type="button" onclick="adjustTopping('KhaiDao', -1)" class="counter-btn">-</button>
+                            <span id="khaiDaoDisplay" class="counter-val">0</span>
+                            <button type="button" onclick="adjustTopping('KhaiDao', 1)" class="counter-btn">+</button>
+                        </div>
+                    </div>
+
+                    <!-- 4. ไข่เจียว (แถว 2 ขวา) -->
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-extrabold text-slate-700">ไข่เจียว</span>
+                        <div class="w-20 h-7 flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-sm">
+                            <button type="button" onclick="adjustTopping('KhaiJiao', -1)" class="counter-btn">-</button>
+                            <span id="khaiJiaoDisplay" class="counter-val">0</span>
+                            <button type="button" onclick="adjustTopping('KhaiJiao', 1)" class="counter-btn">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 3: หมายเหตุ (ความสูง h-7 เท่ากับช่องระบุราคา) -->
+                <div class="flex items-center gap-2 pt-1 border-t border-slate-200/60">
+                    <span class="text-xs font-extrabold text-slate-700 whitespace-nowrap">หมายเหตุ</span>
+                    <input type="text" id="noteInput" placeholder="(เช่น เผ็ดน้อย, ไม่ใส่ผัก)" class="flex-1 px-2.5 h-7 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-sm">
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="button" onclick="saveOrder()" class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-extrabold py-2.5 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-1">
+                ✓ บันทึกรายการ
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentFood = null;
+        let qty = 1;
+        let khaiDaoQty = 0;
+        let khaiJiaoQty = 0;
+
+        window.addEventListener('message', function(event) {
+            const data = event.data;
+            if (!data || !data.action) return;
+
+            if (data.action === 'initFoodDetail') {
+                currentFood = data.food;
+                qty = 1;
+                khaiDaoQty = 0;
+                khaiJiaoQty = 0;
+                
+                document.getElementById('foodTitle').textContent = currentFood ? currentFood.name : '';
+                document.getElementById('qtyDisplay').textContent = qty;
+                document.getElementById('khaiDaoDisplay').textContent = khaiDaoQty;
+                document.getElementById('khaiJiaoDisplay').textContent = khaiJiaoQty;
+                document.getElementById('noteInput').value = '';
+                document.getElementById('customPriceInput').value = '';
+
+                renderExistingItems(data.cart || []);
+            }
+        });
+
+        function renderExistingItems(cart) {
+            const section = document.getElementById('existingCartSection');
+            const listContainer = document.getElementById('existingItemsList');
+            const badge = document.getElementById('itemCountBadge');
+            
+            if (!currentFood) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            const items = cart.filter(item => String(item.food_id) === String(currentFood.id));
+
+            if (items.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            section.classList.remove('hidden');
+            badge.textContent = `${items.length} รายการ`;
+            listContainer.innerHTML = '';
+
+            items.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'flex items-center justify-between bg-white px-2 py-1 border border-sky-100 rounded-lg text-[10px] shadow-sm';
+
+                let noteText = item.note ? `<span class="text-slate-400 font-normal"> (${item.note})</span>` : '';
+                let priceText = item.isCustomPrice ? `<span class="text-amber-600 font-bold"> [฿${item.price}]</span>` : '';
+
+                itemDiv.innerHTML = `
+                    <div class="flex items-center gap-1 min-w-0 flex-1 pr-1">
+                        <span class="font-extrabold text-sky-700 shrink-0">${item.qty}x</span>
+                        <span class="font-bold text-slate-700 truncate">${item.name}${priceText}${noteText}</span>
+                    </div>
+                    <button type="button" onclick="removeItem('${item.item_id}')" class="text-rose-500 hover:text-rose-700 p-0.5 font-extrabold text-xs shrink-0 transition-colors">✕</button>
+                `;
+                listContainer.appendChild(itemDiv);
+            });
+        }
+
+        function handleOutsideClick(e) {
+            if (e.target.id === 'backdrop') {
+                closePopup();
+            }
+        }
+
+        function removeItem(itemId) {
+            window.parent.postMessage({
+                action: 'deleteCartItemFromDetail',
+                itemId: itemId
+            }, '*');
+        }
+
+        function adjustQty(delta) {
+            qty = Math.max(1, qty + delta);
+            document.getElementById('qtyDisplay').textContent = qty;
+        }
+
+        function adjustTopping(type, delta) {
+            if (type === 'KhaiDao') {
+                khaiDaoQty = Math.max(0, khaiDaoQty + delta);
+                document.getElementById('khaiDaoDisplay').textContent = khaiDaoQty;
+            } else if (type === 'KhaiJiao') {
+                khaiJiaoQty = Math.max(0, khaiJiaoQty + delta);
+                document.getElementById('khaiJiaoDisplay').textContent = khaiJiaoQty;
+            }
+        }
+
+        function closePopup() {
+            window.parent.postMessage({ action: 'closePopup' }, '*');
+        }
+
+        function saveOrder() {
+            if (!currentFood) return;
+
+            const customPriceVal = document.getElementById('customPriceInput').value;
+            let noteVal = document.getElementById('noteInput').value.trim();
+
+            let toppingNotes = [];
+            if (khaiDaoQty > 0) toppingNotes.push(`ไข่ดาว x${khaiDaoQty}`);
+            if (khaiJiaoQty > 0) toppingNotes.push(`ไข่เจียว x${khaiJiaoQty}`);
+
+            if (toppingNotes.length > 0) {
+                const toppingStr = toppingNotes.join(', ');
+                noteVal = noteVal ? `${toppingStr}, ${noteVal}` : toppingStr;
+            }
+
+            window.parent.postMessage({
+                action: 'saveOrderDetail',
+                payload: {
+                    food: currentFood,
+                    mainQty: qty,
+                    customPriceVal: customPriceVal !== '' ? Number(customPriceVal) : null,
+                    note: noteVal,
+                    khaiDaoQty: khaiDaoQty,
+                    khaiJiaoQty: khaiJiaoQty
+                }
+            }, '*');
+        }
+    </script>
+</body>
+</html>
