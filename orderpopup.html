@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>รายการอาหารในหมวดหมู่</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            font-family: 'Sarabun', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            user-select: none;
+            touch-action: manipulation;
+            -webkit-text-size-adjust: 100%;
+        }
+        .food-badge {
+            position: absolute;
+            top: -0.35rem;
+            right: -0.35rem;
+            background-color: #ef4444;
+            color: #ffffff;
+            font-size: 0.75rem;
+            font-weight: 800;
+            width: 1.35rem;
+            height: 1.35rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="p-3 box-border h-full flex items-center justify-center">
+
+    <div id="catBackdrop" onclick="handleOutsideClick(event)" class="w-full h-full flex items-center justify-center p-2 box-border">
+        
+        <!-- สีเขียว: กรอบป๊อปอัพกึ่งกลางหน้าจอ ขยายขึ้น-ลงตามคอนเทนต์ได้สูงสุด 85vh -->
+        <div onclick="event.stopPropagation()" class="bg-white rounded-[2rem] p-4 shadow-2xl border-4 border-emerald-400 w-full max-w-sm mx-auto flex flex-col max-h-[85vh] h-auto overflow-hidden">
+            
+            <!-- สีแดง (ส่วนบน): Header ฟิกซ์อยู่กับที่ -->
+            <div class="flex justify-between items-center mb-3 gap-1 shrink-0 pb-2 border-b border-slate-100">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <span id="catModalIcon" class="text-xl shrink-0">🥩</span>
+                    <h2 id="catModalTitle" class="font-extrabold text-sm text-slate-800 truncate">หมวดหมู่</h2>
+                </div>
+                
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button type="button" onclick="sendParentAction('cancelCategoryItems')" class="bg-rose-100 hover:bg-rose-200 text-rose-500 text-sm font-extrabold px-3 py-1 rounded-full transition">
+                        ยกเลิก
+                    </button>
+                    <button type="button" onclick="sendParentAction('closeCategoryModal')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold ml-1 leading-none">&times;</button>
+                </div>
+            </div>
+
+            <!-- สีเหลือง: โซนรายการอาหาร ถ้ารายการเยอะจะสกอร์ได้เฉพาะตรงนี้ -->
+            <div id="foodButtonsGrid" class="grid grid-cols-2 gap-2.5 overflow-y-auto p-1 mb-2 flex-1 min-h-0"></div>
+
+            <!-- สีแดง (ส่วนล่าง): Footer ปุ่มตรวจสอบ ฟิกซ์อยู่กับที่ด้านล่าง -->
+            <div class="shrink-0 pt-2 border-t border-slate-100 mt-auto">
+                <button type="button" onclick="sendParentAction('goToSummary')" class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-extrabold py-2.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-1.5">
+                    🔍 ตรวจสอบ
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let currentFoods = [];
+
+        window.addEventListener('message', function(event) {
+            const data = event.data;
+            if (!data || !data.action) return;
+
+            if (data.action === 'initCategoryView') {
+                document.getElementById('catModalIcon').textContent = data.icon || '🍱';
+                document.getElementById('catModalTitle').textContent = data.category ? data.category.name : 'หมวดหมู่';
+                currentFoods = data.foods || [];
+                renderGrid(data.cart || []);
+            }
+        });
+
+        function renderGrid(cart) {
+            const grid = document.getElementById('foodButtonsGrid');
+            grid.innerHTML = '';
+
+            if (currentFoods.length === 0) {
+                grid.innerHTML = '<div class="col-span-2 text-center py-6 text-slate-400 font-bold text-sm">ไม่มีรายการอาหารในหมวดนี้</div>';
+                return;
+            }
+
+            const sortedFoods = [...currentFoods].sort((a, b) => {
+                return (a.name || '').localeCompare(b.name || '', 'th');
+            });
+
+            sortedFoods.forEach(food => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'relative border-2 border-emerald-400 text-emerald-800 font-extrabold px-2 py-1.5 rounded-xl text-sm leading-tight flex items-center justify-center text-center bg-white shadow-sm active:bg-emerald-500 active:text-white transition h-10 w-full shrink-0';
+
+                const foodQty = cart
+                    .filter(item => String(item.food_id) === String(food.id))
+                    .reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+
+                let badgeHTML = foodQty > 0 ? `<span class="food-badge">${foodQty}</span>` : '';
+                btn.innerHTML = `<span class="truncate">${food.name}</span>${badgeHTML}`;
+                
+                btn.onclick = () => {
+                    window.parent.postMessage({
+                        action: 'openOrderDetailModal',
+                        food: food
+                    }, '*');
+                };
+
+                grid.appendChild(btn);
+            });
+        }
+
+        function handleOutsideClick(e) {
+            if (e.target.id === 'catBackdrop') {
+                sendParentAction('closeCategoryModal');
+            }
+        }
+
+        function sendParentAction(actionName) {
+            window.parent.postMessage({ action: actionName }, '*');
+        }
+    </script>
+</body>
+</html>

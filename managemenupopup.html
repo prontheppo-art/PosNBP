@@ -1,0 +1,236 @@
+<!--
+  ========================================
+  [File Note]
+  - File Name: managemenupopup.html
+  - Included JS / Libraries: key.js, Tailwind CSS, Supabase JS Client
+  - Target Iframe Modals: addmenupopup.html, managemenueditpopup.html
+  - Supabase Tables Used: foods
+  ========================================
+-->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการราคาเมนู</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: sans-serif;
+            user-select: none;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body id="pageOverlay" class="p-2 sm:p-4 flex items-center justify-center min-h-screen bg-slate-900/60 backdrop-blur-sm relative">
+
+    <!-- Modal Box Container (เปลี่ยนกรอบเป็นสีน้ำเงิน border-blue-600) -->
+    <div onclick="event.stopPropagation()" class="w-full max-w-lg bg-white rounded-3xl shadow-2xl border-4 border-blue-600 overflow-hidden flex flex-col max-h-[90vh] z-10">
+        
+        <!-- Header Section -->
+        <div class="bg-slate-700 text-white p-4 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">📁</span>
+                <h3 id="groupNameTitle" class="font-bold text-lg text-amber-300">กำลังโหลด...</h3>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="openAddMenuPopupHTML()" class="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1 shadow transition">
+                    <span>➕</span> เมนู
+                </button>
+                <button onclick="closeModal()" class="bg-slate-600 hover:bg-slate-500 text-slate-200 rounded-full w-8 h-8 flex items-center justify-center font-bold text-lg active:scale-95 transition">
+                    ✕
+                </button>
+            </div>
+        </div>
+
+        <!-- Table Header -->
+        <div class="bg-blue-600 text-white font-bold text-xs py-2.5 px-3 grid grid-cols-12 gap-1 items-center text-center shrink-0">
+            <div class="col-span-6 text-left pl-2">รายการอาหาร</div>
+            <div class="col-span-2">ชาวบ้าน</div>
+            <div class="col-span-2">นักท่องเที่ยว</div>
+            <div class="col-span-2">สบายดี</div>
+        </div>
+
+        <!-- Food List Container (ปรับระยะห่างให้กระชับขึ้น) -->
+        <div id="foodListContainer" class="flex-1 overflow-y-auto p-2 space-y-1 bg-slate-50">
+            <div class="text-center py-8 text-slate-400 text-xs">⏳ กำลังโหลดรายการอาหาร...</div>
+        </div>
+
+        <!-- Footer Section -->
+        <div class="p-3 bg-white border-t border-slate-100 shrink-0">
+            <button onclick="closeModal()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-3 rounded-2xl text-sm shadow active:scale-[0.98] transition">
+                ปิดหน้าต่าง
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Inner Modal Frame Container -->
+    <div id="subModalWrapper" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-xs">
+        <iframe id="subModalFrame" class="w-full h-full border-none" src="about:blank"></iframe>
+    </div>
+
+    <!-- Script Section -->
+    <script src="key.js"></script>
+    <script>
+        let db;
+        let currentGroupId = null;
+        let currentGroupName = '';
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            setupOutsideClickClose();
+
+            if (window.supabaseClient) {
+                db = window.supabaseClient;
+            } else if (typeof supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined') {
+                db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            currentGroupId = urlParams.get('groupId');
+            currentGroupName = urlParams.get('groupName') || 'หมวดหมู่';
+
+            document.getElementById('groupNameTitle').textContent = currentGroupName;
+
+            if (db && currentGroupId) {
+                await loadCategoryFoods();
+            } else {
+                document.getElementById('foodListContainer').innerHTML = `<div class="text-center py-8 text-red-500 text-xs">❌ ไม่พบบริบทหมวดหมู่หรือการเชื่อมต่อ DB</div>`;
+            }
+        });
+
+        function setupOutsideClickClose() {
+            document.getElementById('pageOverlay').addEventListener('click', (e) => {
+                if (e.target.id === 'pageOverlay') {
+                    closeModal();
+                }
+            });
+
+            document.getElementById('subModalWrapper').addEventListener('click', (e) => {
+                if (e.target.id === 'subModalWrapper') {
+                    closeSubModalFrame();
+                }
+            });
+
+            window.addEventListener('message', (event) => {
+                if (event.data && (event.data.action === 'closeSubModal' || event.data.action === 'closePopup' || event.data.action === 'closeAddMenuModal')) {
+                    closeSubModalFrame();
+                }
+            });
+        }
+
+        async function loadCategoryFoods() {
+            try {
+                const { data: foods, error } = await db
+                    .from('foods')
+                    .select('*')
+                    .eq('group_id', currentGroupId)
+                    .order('id', { ascending: true });
+
+                if (error) throw error;
+                renderFoodRows(foods || []);
+            } catch (err) {
+                console.error("Error loading foods:", err);
+                document.getElementById('foodListContainer').innerHTML = `<div class="text-center py-8 text-red-500 text-xs">เกิดข้อผิดพลาด: ${err.message}</div>`;
+            }
+        }
+
+        function renderFoodRows(foods) {
+            const container = document.getElementById('foodListContainer');
+            container.innerHTML = '';
+
+            if (foods.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">ไม่มีรายการอาหารในหมวดหมู่นี้</div>`;
+                return;
+            }
+
+            foods.forEach(food => {
+                const row = document.createElement('div');
+                // ปรับลบเส้นขอบ (border) ออก และขยับแถวให้ชิดกันสวยงาม
+                row.className = "bg-white px-2 py-1 rounded-lg shadow-2xs grid grid-cols-12 gap-1 items-center";
+
+                row.innerHTML = `
+                    <div class="col-span-6 flex items-center overflow-hidden pr-1">
+                        <span onclick="openEditMenuModal(${food.id}, '${food.name.replace(/'/g, "\\'")}', ${food.group_id || currentGroupId})" 
+                              class="font-bold text-slate-800 text-xs truncate cursor-pointer hover:text-indigo-600 active:scale-95 transition flex items-center gap-1 group" 
+                              title="แตะเพื่อแก้ไขชื่อหรือย้ายกลุ่ม">
+                            <span class="truncate">${food.name}</span>
+                        </span>
+                    </div>
+                    <div class="col-span-2">
+                        <input type="number" value="${food.price_1 || 0}" onchange="updatePrice(${food.id}, 'price_1', this.value)" 
+                            class="w-full text-center font-bold text-slate-700 text-xs bg-slate-50 border border-slate-200 rounded-md py-1 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div class="col-span-2">
+                        <input type="number" value="${food.price_2 || 0}" onchange="updatePrice(${food.id}, 'price_2', this.value)" 
+                            class="w-full text-center font-bold text-slate-700 text-xs bg-slate-50 border border-slate-200 rounded-md py-1 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div class="col-span-2">
+                        <input type="number" value="${food.price_3 || 0}" onchange="updatePrice(${food.id}, 'price_3', this.value)" 
+                            class="w-full text-center font-bold text-slate-700 text-xs bg-slate-50 border border-slate-200 rounded-md py-1 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        async function updatePrice(foodId, priceField, value) {
+            try {
+                const numVal = parseFloat(value) || 0;
+                const { error } = await db
+                    .from('foods')
+                    .update({ [priceField]: numVal })
+                    .eq('id', foodId);
+
+                if (error) throw error;
+            } catch (err) {
+                alert('ไม่สามารถอัปเดตราคาได้: ' + err.message);
+            }
+        }
+
+        function openAddMenuPopupHTML() {
+            const wrapper = document.getElementById('subModalWrapper');
+            const iframe = document.getElementById('subModalFrame');
+            
+            iframe.src = `addmenupopup.html?groupId=${currentGroupId}&groupName=${encodeURIComponent(currentGroupName)}`;
+            wrapper.classList.remove('hidden');
+        }
+
+        function openEditMenuModal(foodId, foodName, groupId) {
+            const wrapper = document.getElementById('subModalWrapper');
+            const iframe = document.getElementById('subModalFrame');
+            
+            const targetGroupId = groupId || currentGroupId;
+            iframe.src = `managemenueditpopup.html?foodId=${foodId}&foodName=${encodeURIComponent(foodName)}&groupId=${targetGroupId}`;
+            wrapper.classList.remove('hidden');
+        }
+
+        function closeSubModalFrame() {
+            const wrapper = document.getElementById('subModalWrapper');
+            const iframe = document.getElementById('subModalFrame');
+            
+            wrapper.classList.add('hidden');
+            iframe.src = 'about:blank';
+            loadCategoryFoods();
+        }
+
+        function closeAddMenuIframe() {
+            closeSubModalFrame();
+        }
+
+        function closeModal() {
+            if (window.parent && window.parent.closeManageMenuIframe) {
+                window.parent.closeManageMenuIframe();
+            } else if (window.parent) {
+                window.parent.postMessage({ action: 'closePopup' }, '*');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <title>เลือกกลุ่มและสถานที่</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+        }
+        body {
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 12px 12px 0 12px;
+            font-family: 'Sarabun', 'Segoe UI', Tahoma, sans-serif;
+            overflow: hidden;
+        }
+        .group-btn-v2 {
+            background-color: #ffffff;
+            border: 1.5px solid #fde68a;
+            color: #334155;
+            transition: all 0.2s ease;
+        }
+        .group-btn-v2.active {
+            background-color: #f59e0b;
+            border-color: #d97706;
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="locationSelectorWrapper"></div>
+
+    <script src="key.js"></script>
+    <script>
+        let locationsData = [];
+        let zonesData = [];
+        let tempSelectedLocation = null;
+
+        let savedTouristLocation = localStorage.getItem('selectedLocationName') || '';
+        let savedTouristZone = localStorage.getItem('selectedZoneName') || '';
+        let savedCustomerPhone = localStorage.getItem('customerPhone') || '';
+
+        function renderLocationComponent(targetContainerId) {
+            const container = document.getElementById(targetContainerId);
+            if (!container) return;
+
+            container.innerHTML = `
+                <div class="fixed-header">
+                    <div class="bg-amber-50/50 border border-amber-200/80 rounded-2xl p-3 shadow-sm space-y-2.5">
+                        
+                        <div class="grid grid-cols-3 gap-2" id="groupSelectorContainer">
+                            <button type="button" onclick="selectCustomerGroup(1, 'ชาวบ้าน')" id="btn-group-1" class="group-btn-v2 active h-[42px] px-1 rounded-xl flex items-center justify-center gap-1 cursor-pointer font-bold text-xs whitespace-nowrap">
+                                <span class="text-sm shrink-0">🏡</span>
+                                <span>ชาวบ้าน</span>
+                            </button>
+
+                            <button type="button" onclick="selectCustomerGroup(2, 'นักท่องเที่ยว')" id="btn-group-2" class="group-btn-v2 h-[42px] px-1 rounded-xl flex items-center justify-center gap-1 cursor-pointer font-bold text-xs whitespace-nowrap">
+                                <span class="text-sm shrink-0">🧳</span>
+                                <span>นักท่องเที่ยว</span>
+                            </button>
+
+                            <button type="button" onclick="selectCustomerGroup(3, 'สบายดี')" id="btn-group-3" class="group-btn-v2 h-[42px] px-1 rounded-xl flex items-center justify-center gap-1 cursor-pointer font-bold text-xs whitespace-nowrap">
+                                <span class="text-sm shrink-0">😊</span>
+                                <span>สบายดี</span>
+                            </button>
+                        </div>
+
+                        <div class="flex gap-2 items-center">
+                            <div id="phoneInputWrapper" class="flex-1 relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-700 text-xs">📞</span>
+                                <input type="tel" id="customerPhoneInput" oninput="formatPhoneInput(this); handlePhoneChange(this.value);" placeholder="เบอร์โทรศัพท์ลูกค้า (ถ้ามี)" maxlength="12" class="w-full h-[42px] pl-8 pr-2 border border-amber-200/80 rounded-xl text-xs bg-white text-slate-800 outline-none focus:border-amber-500 font-medium placeholder-gray-400">
+                            </div>
+
+                            <div id="locationBtnContainer" class="w-5/12 hidden">
+                                <button type="button" id="btnSelectLocation" onclick="requestOpenLocationModal()" class="w-full h-[42px] bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold px-2 rounded-xl text-xs flex items-center justify-center gap-1 shadow-sm transition whitespace-nowrap">
+                                    <span>📍</span>
+                                    <span id="locationBtnText" class="truncate">เลือกสถานที่</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="customerGroupSelect" value="1">
+                        <input type="hidden" id="selectedGroupName" value="ชาวบ้าน">
+                        <input type="hidden" id="selectedLocationName" value="">
+                        <input type="hidden" id="selectedZoneName" value="">
+                    </div>
+                </div>
+            `;
+        }
+
+        async function initLocationComponent(targetContainerId) {
+            renderLocationComponent(targetContainerId);
+            await fetchLocationsAndZones();
+            
+            document.getElementById('customerPhoneInput').value = savedCustomerPhone;
+
+            const savedGroupId = Number(localStorage.getItem('selectedGroupId')) || 1;
+            const savedGroupName = localStorage.getItem('selectedGroupName') || 'ชาวบ้าน';
+
+            selectCustomerGroup(savedGroupId, savedGroupName);
+        }
+
+        async function fetchLocationsAndZones() {
+            try {
+                const [locRes, zoneRes] = await Promise.all([
+                    supabaseClient.from('locations').select('*'),
+                    supabaseClient.from('zones').select('*')
+                ]);
+
+                if (locRes.data) locationsData = locRes.data;
+                if (zoneRes.data) zonesData = zoneRes.data;
+            } catch (err) {
+                console.error('เกิดข้อผิดพลาดในการดึงข้อมูลสถานที่/โซน:', err);
+            }
+        }
+
+        function handlePhoneChange(val) {
+            savedCustomerPhone = val;
+            localStorage.setItem('customerPhone', val);
+            notifyParent();
+        }
+
+        function formatPhoneInput(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.length > 10) value = value.slice(0, 10);
+            
+            if (value.length > 6) {
+                input.value = `${value.slice(0, 3)}-${value.slice(3, 6)}-${value.slice(6)}`;
+            } else if (value.length > 3) {
+                input.value = `${value.slice(0, 3)}-${value.slice(3)}`;
+            } else {
+                input.value = value;
+            }
+        }
+
+        function selectCustomerGroup(groupId, groupName) {
+            localStorage.setItem('selectedGroupId', groupId);
+
+            const locationBtnContainer = document.getElementById('locationBtnContainer');
+
+            if (groupId === 2) {
+                locationBtnContainer.classList.remove('hidden');
+
+                savedTouristLocation = localStorage.getItem('selectedLocationName') || '';
+                savedTouristZone = localStorage.getItem('selectedZoneName') || '';
+
+                if (savedTouristLocation && savedTouristZone) {
+                    document.getElementById('selectedLocationName').value = savedTouristLocation;
+                    document.getElementById('selectedZoneName').value = savedTouristZone;
+                    
+                    let displayLocationText = savedTouristLocation;
+                    if (savedTouristZone && savedTouristZone !== savedTouristLocation) {
+                        displayLocationText += ` - ${savedTouristZone}`;
+                    }
+                    document.getElementById('locationBtnText').innerText = displayLocationText;
+                    applyCustomerGroupSelection(2, `นักท่องเที่ยว (${displayLocationText})`);
+                } else {
+                    document.getElementById('selectedLocationName').value = '';
+                    document.getElementById('selectedZoneName').value = '';
+                    document.getElementById('locationBtnText').innerText = 'เลือกสถานที่';
+                    applyCustomerGroupSelection(2, 'นักท่องเที่ยว');
+                }
+            } else {
+                locationBtnContainer.classList.add('hidden');
+                document.getElementById('selectedLocationName').value = '';
+                document.getElementById('selectedZoneName').value = '';
+                applyCustomerGroupSelection(groupId, groupName);
+            }
+        }
+
+        function requestOpenLocationModal() {
+            window.parent.postMessage({
+                type: 'OPEN_LOCATION_MODAL',
+                locationsData: locationsData
+            }, '*');
+        }
+
+        window.addEventListener('message', (event) => {
+            if (!event.data) return;
+
+            if (event.data.type === 'SELECT_LOCATION_ITEM') {
+                const loc = event.data.location;
+                tempSelectedLocation = loc;
+
+                // สั่งปิด Pop-up สถานที่ ทันทีทุกกรณีเมื่อมีการคลิกเลือกสถานที่
+                window.parent.postMessage({ type: 'CLOSE_LOCATION_MODAL' }, '*');
+
+                if (loc.name.includes('หน้าร้าน')) {
+                    const defaultZone = zonesData.find(z => String(z.location_id) === String(loc.id) && z.name.includes('หน้าร้าน')) 
+                                     || zonesData.find(z => String(z.location_id) === String(loc.id))
+                                     || { name: 'หน้าร้าน' };
+                    selectZone(defaultZone);
+                } else {
+                    // เปิด Pop-up เลือกโซนต่อ
+                    window.parent.postMessage({
+                        type: 'OPEN_ZONE_MODAL',
+                        location: loc,
+                        zonesData: zonesData
+                    }, '*');
+                }
+            }
+
+            if (event.data.type === 'SELECT_ZONE_ITEM') {
+                tempSelectedLocation = event.data.location || tempSelectedLocation;
+                selectZone(event.data.zone);
+            }
+        });
+
+        function selectZone(zone) {
+            const locName = tempSelectedLocation ? tempSelectedLocation.name : '';
+            const zoneName = zone.name;
+
+            savedTouristLocation = locName;
+            savedTouristZone = zoneName;
+
+            localStorage.setItem('selectedLocationName', locName);
+            localStorage.setItem('selectedZoneName', zoneName);
+
+            document.getElementById('selectedLocationName').value = locName;
+            document.getElementById('selectedZoneName').value = zoneName;
+
+            let displayLocationText = locName;
+            if (zoneName && zoneName !== locName) {
+                displayLocationText += ` - ${zoneName}`;
+            }
+            document.getElementById('locationBtnText').innerText = displayLocationText;
+
+            applyCustomerGroupSelection(2, `นักท่องเที่ยว (${displayLocationText})`);
+        }
+
+        function applyCustomerGroupSelection(groupId, groupName) {
+            document.getElementById('customerGroupSelect').value = groupId;
+            document.getElementById('selectedGroupName').value = groupName;
+
+            localStorage.setItem('selectedGroupName', groupName);
+
+            document.querySelectorAll('.group-btn-v2').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`btn-group-${groupId}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            notifyParent();
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await initLocationComponent('locationSelectorWrapper');
+
+            const targetNode = document.getElementById('locationSelectorWrapper');
+            if (targetNode) {
+                const observer = new MutationObserver(() => notifyParent());
+                observer.observe(targetNode, { attributes: true, subtree: true, childList: true });
+            }
+
+            notifyParent();
+        });
+
+        function notifyParent() {
+            const data = {
+                type: 'LOCATION_DATA_UPDATE',
+                groupId: document.getElementById('customerGroupSelect')?.value || '1',
+                groupName: document.getElementById('selectedGroupName')?.value || '',
+                phone: document.getElementById('customerPhoneInput')?.value || '',
+                locationName: document.getElementById('selectedLocationName')?.value || '',
+                zoneName: document.getElementById('selectedZoneName')?.value || ''
+            };
+            window.parent.postMessage(data, '*');
+        }
+
+        document.addEventListener('input', notifyParent);
+        document.addEventListener('change', notifyParent);
+    </script>
+</body>
+</html>
